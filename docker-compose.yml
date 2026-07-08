@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: note-workbench-postgres
+    environment:
+      POSTGRES_DB: note-workbench
+      POSTGRES_USER: note-workbench_user
+      POSTGRES_PASSWORD: change_me_strong_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:8
+    container_name: note-workbench-redis
+    command: redis-server --requirepass change_me_redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

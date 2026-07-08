@@ -1,0 +1,80 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS workspaces (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS documents (
+  id UUID PRIMARY KEY,
+  workspace_id UUID NOT NULL REFERENCES workspaces(id),
+  title TEXT NOT NULL,
+  source_path TEXT NOT NULL,
+  content_type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS chunks (
+  id UUID PRIMARY KEY,
+  document_id UUID NOT NULL REFERENCES documents(id),
+  chunk_index INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  source_locator TEXT,
+  token_count INTEGER,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (document_id, chunk_index)
+);
+
+CREATE TABLE IF NOT EXISTS chunk_embeddings (
+  chunk_id UUID PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
+  embedding vector(1536) NOT NULL,
+  model TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY,
+  workspace_id UUID NOT NULL REFERENCES workspaces(id),
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY,
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tool_calls (
+  id UUID PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+  message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+  tool_name TEXT NOT NULL,
+  status TEXT NOT NULL,
+  input JSONB NOT NULL DEFAULT '{}'::jsonb,
+  output JSONB,
+  error_message TEXT,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  finished_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS index_jobs (
+  id UUID PRIMARY KEY,
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  stage TEXT NOT NULL,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
