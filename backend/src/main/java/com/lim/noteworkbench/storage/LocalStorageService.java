@@ -27,8 +27,8 @@ public class LocalStorageService implements StorageService {
     private final StorageProperties storageProperties;
 
     @Override
-    public String store(Long workspaceId, MultipartFile file) {
-        if (workspaceId == null) throw new IllegalArgumentException("workspaceId 不能为空");
+    public String store(Long collectionId, MultipartFile file) {
+        if (collectionId == null) throw new IllegalArgumentException("collectionId 不能为空");
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("上传文件不能为空");
 
         //获取上传的文件的原始名称
@@ -51,7 +51,7 @@ public class LocalStorageService implements StorageService {
         Path uploadDirectory = Path.of(storageProperties.getRoot())
                 .toAbsolutePath() //将配置的文件存储路径转为绝对路径
                 .resolve("uploads") //追加路径：/uploads
-                .resolve(workspaceId.toString()) //追加路径：/workspaceId
+                .resolve(collectionId.toString()) // 追加路径：/collectionId
                 .normalize(); //然后整理一次
 
         Path target = uploadDirectory

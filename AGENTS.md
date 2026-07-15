@@ -36,6 +36,7 @@ AI 在新增、移动或重构文件时，必须遵循以下规范：
     - 二级及多级路由按父子关系组织。 子路由页面放在父级页面目录下；需要对多个子页面分类时，使用小写的 kebab-case 文件夹作为分类目录，实际路由页面仍使用 PascalCase 文件夹，并在其中创建 index.tsx。 示例结构：src/pages/Home/sidebar-menu1/Role1/index.tsx、src/pages/Home/sidebar-menu1/Role2/index.tsx。
       分类文件夹不能直接作为页面组件。
     - 分类目录只负责组织文件，名称使用小写字母和连字符，例如 user-management、system-setting；不要使用 UserManagement、userManagement 或下划线命名。
+    - 当一级路由页面较复杂时，必须在该页面目录内部进行拆分。index.tsx 仅作为路由页面入口，负责组合子组件，不应包含大量业务逻辑或超长 JSX。页面内部分类目录统一使用小写命名，例如 components、hooks、services、utils。页面专属组件使用 PascalCase，并放在页面的 components 目录下；页面专属 Hook 使用 useXxx 命名，并放在页面的 hooks 目录下。只有被多个页面复用的组件或 Hook，才提升到全局 src/components 或 src/hooks 目录。页面内部拆出的组件不能放进 pages 下伪装成新的路由页面。
 2. 路由配置统一放在 src/router/ 下。 路由入口文件为 src/router/index.tsx，页面组件中不得重复维护全局路由配置。
 3. 状态管理统一放在 src/store/ 下。 Store 文件必须使用 useXxxStore.ts 格式命名，导出的 Store Hook 名称必须与文件名一致，例如 useUserStore.ts 导出 useUserStore。
 4. 自定义 Hook 统一放在 src/hooks/ 下。 Hook 文件及导出函数必须以 use 开头，并使用 camelCase，例如 useAuth.ts、useUserInfo.ts、useTablePagination.ts。一个文件原则上只维护一个主要 Hook。

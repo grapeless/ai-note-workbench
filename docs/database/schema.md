@@ -2,7 +2,7 @@
 
 ## 核心表
 
-- `workspaces`：知识库容器。
+- `knowledge_collection`：知识集合容器。
 - `documents`：上传的文件及解析/索引状态。
 - `chunks`：文本分块、来源位置、token 计数、元数据。
 - `chunk_embeddings`：每个分块对应的向量嵌入。

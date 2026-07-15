@@ -29,7 +29,7 @@ AI 能力层
 ## 后端模块规划
 
 - `auth`: 身份认证和后续权限能力。
-- `workspace`: 知识空间和配置。
+- `collection`: 知识集合和配置。
 - `document`: 上传、元数据、解析状态。
 - `chunk`: 分块元数据和检索载荷。
 - `conversation`: 会话和消息。

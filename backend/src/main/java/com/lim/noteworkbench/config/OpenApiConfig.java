@@ -13,6 +13,6 @@ public class OpenApiConfig {
             .info(new Info()
                 .title("笔记工作台API")
                 .version("v1.0")
-                .description("工作区相关接口文档"));
+                .description("知识集合与文档相关接口文档"));
     }
 }

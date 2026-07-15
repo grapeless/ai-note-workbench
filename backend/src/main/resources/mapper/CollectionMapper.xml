@@ -1,23 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.lim.noteworkbench.mapper.WorkspaceMapper">
-    <resultMap id="BaseResultMap" type="com.lim.noteworkbench.model.entity.Workspace">
-        <!--@mbg.generated-->
-        <!--@Table workspace-->
+<mapper namespace="com.lim.noteworkbench.mapper.CollectionMapper">
+    <resultMap id="BaseResultMap" type="com.lim.noteworkbench.model.entity.KnowledgeCollection">
         <id column="id" jdbcType="BIGINT" property="id" />
         <result column="name" jdbcType="VARCHAR" property="name" />
         <result column="description" jdbcType="VARCHAR" property="description" />
         <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
         <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
     </resultMap>
-    <sql id="Base_Column_List">
-        <!--@mbg.generated-->
-        id, "name", description, create_time, update_time
-    </sql>
 
-    <insert id="insert" parameterType="com.lim.noteworkbench.model.entity.Workspace"
+    <insert id="insert" parameterType="com.lim.noteworkbench.model.entity.KnowledgeCollection"
             useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO workspace (
+        INSERT INTO knowledge_collection (
         name, description, create_time, update_time
         ) VALUES (
         #{name}, #{description},
@@ -27,18 +21,18 @@
 
     <select id="findById" resultMap="BaseResultMap">
         SELECT id, name, description, create_time, update_time
-        FROM workspace
+        FROM knowledge_collection
         WHERE id = #{id}
     </select>
 
     <select id="findAll" resultMap="BaseResultMap">
         SELECT id, name, description, create_time, update_time
-        FROM workspace
+        FROM knowledge_collection
         ORDER BY create_time DESC
     </select>
 
-    <update id="update" parameterType="com.lim.noteworkbench.model.entity.Workspace">
-        UPDATE workspace
+    <update id="update" parameterType="com.lim.noteworkbench.model.entity.KnowledgeCollection">
+        UPDATE knowledge_collection
         SET name = #{name},
         description = #{description},
         update_time = #{updateTime}
@@ -46,7 +40,7 @@
     </update>
 
     <delete id="deleteById">
-        DELETE FROM workspace
+        DELETE FROM knowledge_collection
         WHERE id = #{id}
     </delete>
 </mapper>

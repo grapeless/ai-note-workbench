@@ -12,7 +12,7 @@ public interface DocumentMapper {
 
     Document findById(@Param("id") Long id);
 
-    List<Document> findByWorkspaceId(@Param("workspaceId") Long workspaceId);
+    List<Document> findByCollectionId(@Param("collectionId") Long collectionId);
 
     int updateStatus(@Param("id") Long id,
                      @Param("status") String status,

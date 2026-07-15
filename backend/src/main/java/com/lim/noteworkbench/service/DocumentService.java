@@ -2,8 +2,8 @@ package com.lim.noteworkbench.service;
 
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
+import com.lim.noteworkbench.mapper.CollectionMapper;
 import com.lim.noteworkbench.mapper.DocumentMapper;
-import com.lim.noteworkbench.mapper.WorkspaceMapper;
 import com.lim.noteworkbench.model.entity.Document;
 import com.lim.noteworkbench.storage.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -18,19 +18,19 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class DocumentService {
     private final DocumentMapper documentMapper;
-    private final WorkspaceMapper workspaceMapper;
+    private final CollectionMapper collectionMapper;
     private final StorageService storageService;
 
     @Transactional
-    public Document upload(Long workspaceId, MultipartFile file) {
+    public Document upload(Long collectionId, MultipartFile file) {
         if (file.isEmpty()) throw new BusinessException(ResultCode.PARAMS_ERROR, "上传文件不能为空");
-        if (workspaceMapper.findById(workspaceId) == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的工作区不存在");
+        if (collectionMapper.findById(collectionId) == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
 
-        //上传文件至 ./{workspace}
-        String sourcePath = storageService.store(workspaceId, file);
+        // 上传文件至对应集合的存储目录
+        String sourcePath = storageService.store(collectionId, file);
         try {
             Document document = Document.builder()
-                    .workspaceId(workspaceId)
+                    .collectionId(collectionId)
                     .title(resolveTitle(file))
                     .sourcePath(sourcePath)
                     .contentType(resolveContentType(file))

@@ -22,12 +22,12 @@ public class DocumentController {
     @Operation(summary = "上传文档")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result<Document> upload(
-            @Parameter(description = "工作区 ID")
-            @RequestParam("workspaceId")
-            @Positive(message = "工作区ID必须为正数") Long workspaceId,
+            @Parameter(description = "集合 ID")
+            @RequestParam("collectionId")
+            @Positive(message = "集合ID必须为正数") Long collectionId,
             @Parameter(description = "文档文件")
             @RequestPart("file") MultipartFile file) {
-        Document document = documentService.upload(workspaceId, file);
+        Document document = documentService.upload(collectionId, file);
         return Result.success(document);
     }
 

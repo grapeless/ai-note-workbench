@@ -11,8 +11,8 @@
         <id property="id"
             column="id"/>
 
-        <result property="workspaceId"
-                column="workspace_id"/>
+        <result property="collectionId"
+                column="collection_id"/>
 
         <result property="title"
                 column="title"/>
@@ -43,7 +43,7 @@
             keyColumn="id">
 
         INSERT INTO document (
-        workspace_id,
+        collection_id,
         title,
         source_path,
         content_type,
@@ -51,7 +51,7 @@
         error_message
         )
         VALUES (
-        #{workspaceId},
+        #{collectionId},
         #{title},
         #{sourcePath},
         #{contentType},
@@ -64,7 +64,7 @@
             resultMap="DocumentResultMap">
 
         SELECT id,
-        workspace_id,
+        collection_id,
         title,
         source_path,
         content_type,
@@ -76,11 +76,11 @@
         WHERE id = #{id}
     </select>
 
-    <select id="findByWorkspaceId"
+    <select id="findByCollectionId"
             resultMap="DocumentResultMap">
 
         SELECT id,
-        workspace_id,
+        collection_id,
         title,
         source_path,
         content_type,
@@ -89,7 +89,7 @@
         create_time,
         update_time
         FROM document
-        WHERE workspace_id = #{workspaceId}
+        WHERE collection_id = #{collectionId}
         ORDER BY create_time DESC
     </select>
 

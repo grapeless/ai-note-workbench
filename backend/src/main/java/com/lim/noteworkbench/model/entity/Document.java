@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 文档实体，用于记录上传文档的基本信息、所属工作区及处理状态。
+ * 文档实体，用于记录上传文档的基本信息、所属集合及处理状态。
  */
 @Data
 @Builder
@@ -21,9 +21,9 @@ public class Document {
     private Long id;
 
     /**
-     * 文档所属工作区的唯一标识。
+     * 文档所属集合的唯一标识。
      */
-    private Long workspaceId;
+    private Long collectionId;
 
     /**
      * 文档标题。

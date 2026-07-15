@@ -10,10 +10,10 @@ import lombok.Data;
 @Data
 @Schema(description = "创建文档参数")
 public class CreateDocumentDTO {
-    @Schema(description = "工作区 ID")
-    @NotNull(message = "工作区ID不能为空")
-    @Positive(message = "工作区ID必须为正数")
-    private Long workspaceId;
+    @Schema(description = "集合 ID")
+    @NotNull(message = "集合ID不能为空")
+    @Positive(message = "集合ID必须为正数")
+    private Long collectionId;
 
     @Schema(description = "文档标题")
     @NotBlank(message = "文档标题不能为空")
