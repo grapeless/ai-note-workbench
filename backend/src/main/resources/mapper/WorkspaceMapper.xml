@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lim.noteworkbench.mapper.WorkspaceMapper">
+    <resultMap id="BaseResultMap" type="com.lim.noteworkbench.model.entity.Workspace">
+        <!--@mbg.generated-->
+        <!--@Table workspace-->
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="name" jdbcType="VARCHAR" property="name" />
+        <result column="description" jdbcType="VARCHAR" property="description" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@mbg.generated-->
+        id, "name", description, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="com.lim.noteworkbench.model.entity.Workspace"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO workspace (
+        name, description, create_time, update_time
+        ) VALUES (
+        #{name}, #{description},
+        #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT id, name, description, create_time, update_time
+        FROM workspace
+        WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        SELECT id, name, description, create_time, update_time
+        FROM workspace
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="update" parameterType="com.lim.noteworkbench.model.entity.Workspace">
+        UPDATE workspace
+        SET name = #{name},
+        description = #{description},
+        update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM workspace
+        WHERE id = #{id}
+    </delete>
+</mapper>

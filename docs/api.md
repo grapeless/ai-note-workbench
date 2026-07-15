@@ -1,24 +1,24 @@
-# API Draft
+# API 草案
 
-## Documents
+## 文档
 
-- `POST /api/documents`: upload a document.
-- `GET /api/documents`: list documents and index status.
-- `GET /api/documents/{id}`: get document detail.
-- `POST /api/documents/{id}/reindex`: rebuild chunks and embeddings.
+- `POST /api/documents`: 上传文档。
+- `GET /api/documents`: 获取文档列表及索引状态。
+- `GET /api/documents/{id}`: 获取文档详情。
+- `POST /api/documents/{id}/reindex`: 重新构建分块和向量嵌入。
 
-## Conversations
+## 会话
 
-- `POST /api/conversations`: create a chat session.
-- `GET /api/conversations`: list chat sessions.
-- `GET /api/conversations/{id}/messages`: list messages.
-- `POST /api/conversations/{id}/messages`: ask a question.
+- `POST /api/conversations`: 创建聊天会话。
+- `GET /api/conversations`: 获取聊天会话列表。
+- `GET /api/conversations/{id}/messages`: 获取消息列表。
+- `POST /api/conversations/{id}/messages`: 提问。
 
-## Tools
+## 工具
 
-- `GET /api/tools`: list registered tools.
-- `GET /api/tool-calls`: inspect recent tool execution logs.
+- `GET /api/tools`: 获取已注册工具列表。
+- `GET /api/tool-calls`: 查看最近的工具执行日志。
 
-## Health
+## 健康检查
 
-- `GET /api/health`: backend health check.
+- `GET /api/health`: 后端健康检查。

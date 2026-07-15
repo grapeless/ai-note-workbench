@@ -11,6 +11,12 @@ Desktop.ini
 *.ipr
 *.iws
 
+# Claude Code project dir (junction -> .agents/skills; source lives in .agents, which is committed)
+.claude/
+
+# Codex CLI project dir
+.codex/
+
 # Node / frontend
 node_modules/
 dist/
@@ -76,3 +82,7 @@ temp/
 *.tmp
 *.bak
 *.swp
+
+
+storage/**
+!storage/.gitkeep

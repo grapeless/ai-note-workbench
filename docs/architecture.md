@@ -1,43 +1,43 @@
-# Architecture
+# 架构
 
-## Principle
+## 设计原则
 
-The system is an AI workbench, not only a RAG app. RAG is exposed as a tool named `knowledge_search`, so later Function Calling, MCP, Agent orchestration, and Workflow execution can share the same tool boundary.
+该系统是一个 AI 工作台，而不只是一个 RAG 应用。RAG 能力会以 `knowledge_search` 工具的形式暴露出来，这样后续的 Function Calling、MCP、Agent 编排和工作流执行都可以复用同一套工具边界。
 
-## Layers
+## 分层
 
 ```text
-Frontend Interaction
-  React Web, chat, document library, citation cards, tool trace panel
+前端交互层
+  React Web、聊天、文档库、引用卡片、工具调用轨迹面板
 
-Backend Application
-  API gateway, users, documents, conversations, tasks
+后端应用层
+  API 网关、用户、文档、会话、任务
 
-AI Orchestration
-  Agent orchestrator, tool registry, workflow engine
+AI 编排层
+  Agent 编排器、工具注册表、工作流引擎
 
-AI Capabilities
-  knowledge_search, summarize_document, study_plan, index_rebuild
+AI 能力层
+  knowledge_search、summarize_document、study_plan、index_rebuild
 
-Model Access
-  LLM gateway, provider adapters, embedding provider
+模型访问层
+  LLM 网关、模型供应商适配器、Embedding 供应商
 
-Data And Infrastructure
-  PostgreSQL, pgvector, Redis, local file storage, logs
+数据与基础设施层
+  PostgreSQL、pgvector、Redis、本地文件存储、日志
 ```
 
-## Backend Module Plan
+## 后端模块规划
 
-- `auth`: identity and future permissions
-- `workspace`: knowledge spaces and settings
-- `document`: upload, metadata, parse status
-- `chunk`: chunk metadata and retrieval payloads
-- `conversation`: sessions and messages
-- `ai`: model gateway, embeddings, prompt assembly
-- `tool`: tool registry and tool call logs
-- `agent`: orchestrator placeholder
-- `workflow`: reusable workflow placeholder
+- `auth`: 身份认证和后续权限能力。
+- `workspace`: 知识空间和配置。
+- `document`: 上传、元数据、解析状态。
+- `chunk`: 分块元数据和检索载荷。
+- `conversation`: 会话和消息。
+- `ai`: 模型网关、向量嵌入、Prompt 组装。
+- `tool`: 工具注册表和工具调用日志。
+- `agent`: Agent 编排器占位模块。
+- `workflow`: 可复用工作流占位模块。
 
-## First Milestone
+## 第一阶段里程碑
 
-Keep deployment simple: one Spring Boot service, one React app, one worker path inside the backend, PostgreSQL with pgvector, Redis for async jobs.
+保持部署简单：一个 Spring Boot 服务、一个 React 应用、后端内部的一条 worker 执行路径、带 pgvector 的 PostgreSQL，以及用于异步任务的 Redis。

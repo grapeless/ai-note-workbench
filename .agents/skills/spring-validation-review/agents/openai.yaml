@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spring Validation Review"
+  short_description: "审查并修复 Spring Boot 参数校验、方法校验与异常处理"
+  default_prompt: "使用 $spring-validation-review 审查当前 DTO、Controller、Service 及校验异常处理，并修复 Bean Validation 问题。"

@@ -1,0 +1,16 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: note-workbench
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+app:
+  storage:
+    root: ./storage

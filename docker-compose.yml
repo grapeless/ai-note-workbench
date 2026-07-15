@@ -3,8 +3,8 @@ services:
     image: pgvector/pgvector:pg17
     container_name: note-workbench-postgres
     environment:
-      POSTGRES_DB: note-workbench
-      POSTGRES_USER: note-workbench_user
+      POSTGRES_DB: note_workbench
+      POSTGRES_USER: note_workbench_user
       POSTGRES_PASSWORD: change_me_strong_password
     ports:
       - "5432:5432"

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lim.noteworkbench.mapper.DocumentMapper">
+
+    <resultMap id="DocumentResultMap"
+               type="com.lim.noteworkbench.model.entity.Document">
+
+        <id property="id"
+            column="id"/>
+
+        <result property="workspaceId"
+                column="workspace_id"/>
+
+        <result property="title"
+                column="title"/>
+
+        <result property="sourcePath"
+                column="source_path"/>
+
+        <result property="contentType"
+                column="content_type"/>
+
+        <result property="status"
+                column="status"/>
+
+        <result property="errorMessage"
+                column="error_message"/>
+
+        <result property="createTime"
+                column="create_time"/>
+
+        <result property="updateTime"
+                column="update_time"/>
+    </resultMap>
+
+    <insert id="insert"
+            parameterType="com.lim.noteworkbench.model.entity.Document"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+
+        INSERT INTO document (
+        workspace_id,
+        title,
+        source_path,
+        content_type,
+        status,
+        error_message
+        )
+        VALUES (
+        #{workspaceId},
+        #{title},
+        #{sourcePath},
+        #{contentType},
+        #{status},
+        #{errorMessage}
+        )
+    </insert>
+
+    <select id="findById"
+            resultMap="DocumentResultMap">
+
+        SELECT id,
+        workspace_id,
+        title,
+        source_path,
+        content_type,
+        status,
+        error_message,
+        create_time,
+        update_time
+        FROM document
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByWorkspaceId"
+            resultMap="DocumentResultMap">
+
+        SELECT id,
+        workspace_id,
+        title,
+        source_path,
+        content_type,
+        status,
+        error_message,
+        create_time,
+        update_time
+        FROM document
+        WHERE workspace_id = #{workspaceId}
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="updateStatus">
+
+        UPDATE document
+        SET status = #{status},
+        error_message = #{errorMessage},
+        update_time = now()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+
+        DELETE FROM document
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

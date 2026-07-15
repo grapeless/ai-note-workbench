@@ -1,0 +1,4 @@
+interface:
+  display_name: "Springdoc Annotation Review"
+  short_description: "补全简洁的 Springdoc OpenAPI 注解"
+  default_prompt: "检查当前改动涉及的 Controller、DTO 和 VO，只使用常用 Springdoc 注解补全文档，保持文案简短，并报告无法确定的含义。"

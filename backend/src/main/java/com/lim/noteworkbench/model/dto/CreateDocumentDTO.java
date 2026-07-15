@@ -1,0 +1,32 @@
+package com.lim.noteworkbench.model.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+@Schema(description = "创建文档参数")
+public class CreateDocumentDTO {
+    @Schema(description = "工作区 ID")
+    @NotNull(message = "工作区ID不能为空")
+    @Positive(message = "工作区ID必须为正数")
+    private Long workspaceId;
+
+    @Schema(description = "文档标题")
+    @NotBlank(message = "文档标题不能为空")
+    @Size(max = 255, message = "文档标题长度不能超过255个字符")
+    private String title;
+
+    @Schema(description = "源文件路径")
+    @NotBlank(message = "源文件路径不能为空")
+    @Size(max = 1024, message = "源文件路径长度不能超过1024个字符")
+    private String sourcePath;
+
+    @Schema(description = "文档内容类型")
+    @NotBlank(message = "文档内容类型不能为空")
+    @Size(max = 100, message = "文档内容类型长度不能超过100个字符")
+    private String contentType;
+}

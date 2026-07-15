@@ -1,35 +1,35 @@
-# MVP Scope
+# MVP 范围
 
-## Goal
+## 目标
 
-Build a local-note knowledge base loop:
+构建一个本地笔记知识库闭环：
 
-1. Upload documents.
-2. Parse and chunk content.
-3. Create embeddings and vector index.
-4. Ask questions.
-5. Answer with citations.
+1. 上传文档。
+2. 解析内容并进行分块。
+3. 生成向量嵌入并建立向量索引。
+4. 提问。
+5. 返回带引用来源的回答。
 
-## Supported Files
+## 支持的文件
 
-Phase 1 supports Markdown first. PDF and Word are reserved for the parser interface, but not required for the first usable loop.
+第一阶段优先支持 Markdown。PDF 和 Word 会在解析器接口中预留，但不作为第一个可用闭环的必需能力。
 
-## Question Flow
+## 提问流程
 
-The user asks in a chat panel. The backend stores the conversation, searches relevant chunks through `knowledge_search`, asks the model to answer, and returns source citations.
+用户在聊天面板中提问。后端保存会话，通过 `knowledge_search` 检索相关分块，请求模型生成回答，并返回来源引用。
 
-## Citation Rules
+## 引用规则
 
-Every answer should include references to document title, chunk position, and source path when available. If retrieval confidence is low, the answer should say that the current knowledge base does not have enough evidence.
+每个回答都应尽可能包含文档标题、分块位置和来源路径。如果检索置信度较低，回答应说明当前知识库没有足够证据。
 
-## Index Failure Handling
+## 索引失败处理
 
-Failed uploads or indexing jobs should be visible in the document list with a retry action. The chat experience should not use documents whose latest index status is failed or pending.
+上传失败或索引失败的任务应显示在文档列表中，并提供重试操作。聊天流程不应使用最新索引状态为失败或等待中的文档。
 
-## Out Of Scope For MVP
+## MVP 暂不包含
 
-- Multi-user permissions
-- Full Agent autonomy
-- MCP server hosting
-- Complex workflow editor
-- Fine-grained eval dashboard
+- 多用户权限。
+- 完整的 Agent 自主执行能力。
+- MCP 服务托管。
+- 复杂的工作流编辑器。
+- 细粒度评测看板。
