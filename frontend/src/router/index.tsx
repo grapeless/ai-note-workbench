@@ -1,12 +1,12 @@
 import {BrowserRouter, Navigate, Route, Routes} from "react-router"
 
-import {WorkbenchPage} from "@/pages/WorkbenchPage"
+import {Workbench} from "@/pages/Workbench"
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/workbench" element={<WorkbenchPage />} />
+        <Route path="/workbench" element={<Workbench />} />
         <Route path="*" element={<Navigate to="/workbench" replace />} />
       </Routes>
     </BrowserRouter>

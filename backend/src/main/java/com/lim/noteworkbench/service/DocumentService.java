@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -61,6 +62,14 @@ public class DocumentService {
         if (document == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "文档不存在");
 
         return document;
+    }
+
+    public List<Document> listByCollectionId(Long collectionId) {
+        if (collectionMapper.findById(collectionId) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
+        }
+
+        return documentMapper.findByCollectionId(collectionId);
     }
 
     private String resolveTitle(MultipartFile file) {

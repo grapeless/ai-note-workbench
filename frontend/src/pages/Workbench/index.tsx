@@ -7,7 +7,7 @@ import {WorkbenchViewNav} from "./components/WorkbenchViewNav"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
-export function WorkbenchPage() {
+export function Workbench() {
     const activeView = useWorkbenchStore((state) => state.activeView)
 
     return (

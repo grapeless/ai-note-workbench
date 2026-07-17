@@ -34,11 +34,10 @@ AI 在新增、移动或重构文件时，必须遵循以下规范：
 2. 路由页面统一放在 src/pages/ 下。
     - 每个路由页面必须创建独立文件夹，文件夹名称使用 PascalCase，并与页面组件名称一致；页面入口统一命名为 index.tsx。 例如：src/pages/Home/index.tsx、src/pages/Login/index.tsx、src/pages/NotFound/index.tsx。
     - 二级及多级路由按父子关系组织。 子路由页面放在父级页面目录下；需要对多个子页面分类时，使用小写的 kebab-case 文件夹作为分类目录，实际路由页面仍使用 PascalCase 文件夹，并在其中创建 index.tsx。 示例结构：src/pages/Home/sidebar-menu1/Role1/index.tsx、src/pages/Home/sidebar-menu1/Role2/index.tsx。
-      分类文件夹不能直接作为页面组件。
     - 分类目录只负责组织文件，名称使用小写字母和连字符，例如 user-management、system-setting；不要使用 UserManagement、userManagement 或下划线命名。
-    - 当一级路由页面较复杂时，必须在该页面目录内部进行拆分。index.tsx 仅作为路由页面入口，负责组合子组件，不应包含大量业务逻辑或超长 JSX。页面内部分类目录统一使用小写命名，例如 components、hooks、services、utils。页面专属组件使用 PascalCase，并放在页面的 components 目录下；页面专属 Hook 使用 useXxx 命名，并放在页面的 hooks 目录下。只有被多个页面复用的组件或 Hook，才提升到全局 src/components 或 src/hooks 目录。页面内部拆出的组件不能放进 pages 下伪装成新的路由页面。
-2. 路由配置统一放在 src/router/ 下。 路由入口文件为 src/router/index.tsx，页面组件中不得重复维护全局路由配置。
-3. 状态管理统一放在 src/store/ 下。 Store 文件必须使用 useXxxStore.ts 格式命名，导出的 Store Hook 名称必须与文件名一致，例如 useUserStore.ts 导出 useUserStore。
-4. 自定义 Hook 统一放在 src/hooks/ 下。 Hook 文件及导出函数必须以 use 开头，并使用 camelCase，例如 useAuth.ts、useUserInfo.ts、useTablePagination.ts。一个文件原则上只维护一个主要 Hook。
-5. 通用组件统一放在 src/components/ 下。 路由页面不得放进 components；仅被某个页面使用的局部组件，可放在该页面目录的 components/ 子目录中。
-6. AI 创建文件前必须先判断文件职责。 路由页面放入 pages，路由配置放入 router，状态管理放入 store，自定义 Hook 放入 hooks，可复用组件放入 components，禁止为了方便将不同职责的文件混放在同一目录中。
+    - 当一级路由页面较复杂时，必须在该页面目录内部进行拆分。index.tsx 仅作为路由页面入口，负责组合子组件，不应包含大量业务逻辑或超长 JSX。 页面内部拆出的组件不能放进 pages 下伪装成新的路由页面。
+3. 路由配置统一放在 src/router/ 下。 路由入口文件为 src/router/index.tsx，页面组件中不得重复维护全局路由配置。
+4. 状态管理统一放在 src/store/ 下。 Store 文件必须使用 useXxxStore.ts 格式命名，导出的 Store Hook 名称必须与文件名一致，例如 useUserStore.ts 导出 useUserStore。
+5. 自定义 Hook 统一放在 src/hooks/ 下。 Hook 文件及导出函数必须以 use 开头，并使用 camelCase，例如 useAuth.ts、useUserInfo.ts、useTablePagination.ts。一个文件原则上只维护一个主要 Hook。
+6. 通用组件统一放在 src/components/ 下。 路由页面不得放进 components；仅被某个页面使用的局部组件，可放在该页面目录的 components/ 子目录中。
+7. API 统一放在 src/api/ 下，数据模型优先使用interface定义，只用需要type时才使用type声明类型，使用函数表达式定义api。

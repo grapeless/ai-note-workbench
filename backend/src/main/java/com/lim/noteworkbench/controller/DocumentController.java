@@ -12,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/documents")
 @RequiredArgsConstructor
@@ -29,6 +31,15 @@ public class DocumentController {
             @RequestPart("file") MultipartFile file) {
         Document document = documentService.upload(collectionId, file);
         return Result.success(document);
+    }
+
+    @Operation(summary = "查询集合下的文档列表")
+    @GetMapping("/list")
+    public Result<List<Document>> list(
+            @Parameter(description = "集合 ID")
+            @RequestParam("collectionId")
+            @Positive(message = "集合ID必须为正数") Long collectionId) {
+        return Result.success(documentService.listByCollectionId(collectionId));
     }
 
     @Operation(summary = "查询文档详情")

@@ -59,6 +59,13 @@
 - `collectionId`：集合 ID，必须为正整数。
 - `file`：上传文件，当前支持 PDF、TXT、MD 和 Markdown。
 
+### 查询集合下的文档列表
+
+- 方法：`GET`
+- 路径：`/documents/list`
+- 查询参数：`collectionId`，集合 ID，必须为正整数。
+- 排序：按上传时间倒序返回。
+
 ### 查询文档详情
 
 - 方法：`GET`
