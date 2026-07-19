@@ -1,7 +1,7 @@
 import {AiPanel} from "./components/AiPanel"
 import {CollectionsPanel} from "./components/CollectionsPanel"
-import {EditorPanel} from "./components/EditorPanel"
-import {NotesPanel} from "./components/NotesPanel"
+import {DocumentDetailsPanel} from "./components/DocumentDetailsPanel"
+import {DocumentsPanel} from "./components/DocumentsPanel"
 import {WorkbenchViewNav} from "./components/WorkbenchViewNav"
 
 import {cn} from "@/lib/utils"
@@ -14,7 +14,7 @@ export function Workbench() {
         <div className="paper-noise flex h-dvh min-h-dvh flex-col overflow-hidden bg-paper text-ink">
             <a href="#main-content"
                className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-marker-yellow focus:p-3 focus:font-bold">
-                跳到笔记正文
+                跳到文档详情
             </a>
             <WorkbenchViewNav/>
             <div
@@ -24,12 +24,12 @@ export function Workbench() {
                     <CollectionsPanel/>
                 </div>
                 <div
-                    className={cn("h-full min-h-0 border-r-2 border-ink xl:block", activeView !== "notes" && "hidden")}>
-                    <NotesPanel/>
+                    className={cn("h-full min-h-0 border-r-2 border-ink xl:block", activeView !== "documents" && "hidden")}>
+                    <DocumentsPanel/>
                 </div>
                 <div
-                    className={cn("h-full min-h-0 border-r-2 border-ink xl:block", activeView !== "editor" && "hidden")}>
-                    <EditorPanel/>
+                    className={cn("h-full min-h-0 border-r-2 border-ink xl:block", activeView !== "details" && "hidden")}>
+                    <DocumentDetailsPanel/>
                 </div>
                 <div className={cn("h-full min-h-0 xl:block", activeView !== "ai" && "hidden")}>
                     <AiPanel/>

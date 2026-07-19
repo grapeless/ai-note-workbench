@@ -36,7 +36,7 @@ export function AiPanel() {
             </div>
 
             <div className="raw-sticker my-4 w-fit bg-kraft/55 px-2 py-1 text-[10px] font-black">
-                CONTEXT: 当前笔记 + 3 个相关文档
+                CONTEXT: 当前文档 + 3 个相关文档
             </div>
 
             <div className="flex-1 space-y-4" aria-live="polite">

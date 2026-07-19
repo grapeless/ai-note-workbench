@@ -217,12 +217,6 @@
     letter-spacing: 0.02em;
   }
 
-  .marker-note {
-    background-color: rgb(255 233 74 / 68%);
-    background-image: linear-gradient(178deg, transparent 4%, rgb(255 233 74 / 80%) 5% 92%, transparent 93%);
-    transform: rotate(-0.25deg);
-  }
-
   .tape-strip {
     background-color: rgb(196 167 125 / 64%);
     background-image: repeating-linear-gradient(96deg, transparent 0 7px, rgb(255 255 255 / 45%) 7px 8px);
@@ -266,7 +260,7 @@
   header,
   nav,
   aside,
-  section[aria-labelledby="notes-title"] {
+  section[aria-labelledby="documents-title"] {
     display: none !important;
   }
 

@@ -1,4 +1,4 @@
-import {Archive, List, MessageSquareText, NotebookPen} from "lucide-react"
+import {Archive, FileSearch, List, MessageSquareText} from "lucide-react"
 
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore, type WorkbenchView} from "@/store/useWorkbenchStore"
@@ -9,8 +9,8 @@ const viewItems: Array<{
     icon: typeof Archive
 }> = [
     {id: "collections", label: "集合", icon: Archive},
-    {id: "notes", label: "笔记", icon: List},
-    {id: "editor", label: "编辑", icon: NotebookPen},
+    {id: "documents", label: "文档", icon: List},
+    {id: "details", label: "详情", icon: FileSearch},
     {id: "ai", label: "ASK / AI", icon: MessageSquareText},
 ]
 
