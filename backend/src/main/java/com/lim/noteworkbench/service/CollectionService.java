@@ -22,8 +22,8 @@ public class CollectionService {
         LocalDateTime now = LocalDateTime.now();
 
         KnowledgeCollection collection = KnowledgeCollection.builder()
-                .name(request.getName())
-                .description(request.getDescription())
+                .name(request.name())
+                .description(request.description())
                 .createTime(now)
                 .updateTime(now)
                 .build();

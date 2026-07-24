@@ -49,7 +49,7 @@ replay_pid*
 # Gradle, in case the backend adds it later
 .gradle/
 
-# Env
+# Environment variables and local secrets
 .env
 .env.*
 !.env.example

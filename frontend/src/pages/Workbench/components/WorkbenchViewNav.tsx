@@ -19,17 +19,15 @@ export function WorkbenchViewNav() {
     const setActiveView = useWorkbenchStore((state) => state.setActiveView)
 
     return (
-        <nav
-            className="grid shrink-0 grid-cols-4 border-b-2 border-ink bg-paper xl:hidden"
-            aria-label="工作台视图导航"
+        <nav className="grid shrink-0 grid-cols-4 border-b-2 border-ink bg-paper xl:hidden"
+             aria-label="工作台视图导航"
         >
             {viewItems.map((item) => {
                 const Icon = item.icon
                 const active = activeView === item.id
 
                 return (
-                    <button
-                        key={item.id}
+                    <button key={item.id}
                         type="button"
                         onClick={() => setActiveView(item.id)}
                         aria-current={active ? "page" : undefined}

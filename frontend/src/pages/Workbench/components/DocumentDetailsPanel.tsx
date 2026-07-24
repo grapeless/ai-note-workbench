@@ -34,34 +34,29 @@ export function DocumentDetailsPanel() {
             aria-busy={documentLoading}
         >
             <article className="mx-auto max-w-3xl" aria-live="polite">
-                {selectedDocumentId === null ? (
-                    <DocumentDetailEmpty/>
-                ) : documentLoading ? (
-                    <DocumentDetailLoading/>
-                ) : documentError ? (
-                    <DocumentDetailError
-                        message={documentError}
-                        loading={documentLoading}
-                        onRetry={() => void loadDocument(selectedDocumentId)}
-                    />
-                ) : document ? (
-                    <DocumentMetadata document={document} collectionName={collectionName ?? "未知集合"}/>
-                ) : (
-                    <DocumentDetailError
-                        message="未获取到文档详情"
-                        loading={documentLoading}
-                        onRetry={() => void loadDocument(selectedDocumentId)}
-                    />
-                )}
+                {selectedDocumentId === null ? (<DocumentDetailEmpty/>)
+                    : documentLoading
+                    ? (<DocumentDetailLoading/>)
+                    : documentError
+                        ? (<DocumentDetailError
+                            message={documentError}
+                            loading={documentLoading}
+                            onRetry={() => void loadDocument(selectedDocumentId)}/>)
+                        : document
+                            ? (<DocumentMetadata document={document} collectionName={collectionName ?? "未知集合"}/>)
+                            : (<DocumentDetailError
+                                    message="未获取到文档详情"
+                                    loading={documentLoading}
+                                    onRetry={() => void loadDocument(selectedDocumentId)}/>)}
             </article>
         </main>
     )
 }
 
 function DocumentMetadata({
-    document,
-    collectionName,
-}: {
+                              document,
+                              collectionName,
+                          }: {
     document: KnowledgeDocument
     collectionName: string
 }) {
@@ -156,10 +151,10 @@ function DocumentDetailLoading() {
 }
 
 function DocumentDetailError({
-    message,
-    loading,
-    onRetry,
-}: {
+                                 message,
+                                 loading,
+                                 onRetry,
+                             }: {
     message: string
     loading: boolean
     onRetry: () => void
@@ -176,7 +171,8 @@ function DocumentDetailError({
                 disabled={loading}
                 onClick={onRetry}
             >
-                <RefreshCw className={cn("size-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true"/>
+                <RefreshCw className={cn("size-4", loading && "animate-spin motion-reduce:animate-none")}
+                           aria-hidden="true"/>
                 重新加载
             </Button>
         </div>

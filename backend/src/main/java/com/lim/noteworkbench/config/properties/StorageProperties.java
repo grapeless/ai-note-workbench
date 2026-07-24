@@ -1,4 +1,4 @@
-package com.lim.noteworkbench.config;
+package com.lim.noteworkbench.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

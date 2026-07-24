@@ -172,8 +172,8 @@ export function CollectionsPanel() {
                     {uploading
                         ? "正在逐个上传，请等待当前队列完成。"
                         : selectedCollection
-                        ? `将导入到「${selectedCollection.name}」`
-                        : "请先选择一个集合后再导入文件。"}
+                            ? `将导入到「${selectedCollection.name}」`
+                            : "请先选择一个集合后再导入文件。"}
                 </p>
                 <p className="sr-only" aria-live="polite" aria-atomic="true">
                     {importStatus}
@@ -200,41 +200,36 @@ export function CollectionsPanel() {
             </div>
 
             <div className="flex-1" aria-live="polite" aria-busy={collectionsLoading}>
-                {collectionsLoading && collections.length === 0 ? (
-                    <CollectionsLoading/>
-                ) : collectionsError ? (
-                    <CollectionsError
-                        message={collectionsError}
-                        loading={collectionsLoading}
-                        onRetry={() => void loadCollections()}
-                    />
-                ) : collections.length === 0 ? (
-                    <CollectionsEmpty/>
-                ) : (
-                    <nav aria-label="集合列表">
-                        <ul>
-                            {collections.map((collection) => (
-                                <li key={collection.id}>
-                                    <CollectionRow
-                                        collection={collection}
-                                        selected={collection.id === selectedCollectionId}
-                                        onSelect={() => void selectCollection(collection.id)}
-                                    />
-                                </li>
-                            ))}
-                        </ul>
-                    </nav>
-                )}
+                {collectionsLoading && collections.length === 0 ? (<CollectionsLoading/>)
+                    : collectionsError ? (<CollectionsError
+                            message={collectionsError}
+                            loading={collectionsLoading}
+                            onRetry={() => void loadCollections()}/>)
+                        : collections.length === 0 ? (<CollectionsEmpty/>)
+                            : (<nav aria-label="集合列表">
+                                    <ul>
+                                        {collections.map((collection) => (
+                                            <li key={collection.id}>
+                                                <CollectionRow
+                                                    collection={collection}
+                                                    selected={collection.id === selectedCollectionId}
+                                                    onSelect={() => void selectCollection(collection.id)}
+                                                />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </nav>)
+                }
             </div>
         </aside>
     )
 }
 
 function UploadQueue({
-    items,
-    uploading,
-    onRetry,
-}: {
+                         items,
+                         uploading,
+                         onRetry,
+                     }: {
     items: UploadItem[]
     uploading: boolean
     onRetry: (item: UploadItem) => void
@@ -263,11 +258,7 @@ function UploadQueue({
     )
 }
 
-function UploadQueueItem({
-    item,
-    retryDisabled,
-    onRetry,
-}: {
+function UploadQueueItem({item, retryDisabled, onRetry,}: {
     item: UploadItem
     retryDisabled: boolean
     onRetry: () => void
@@ -315,7 +306,8 @@ function UploadQueueItem({
 
 function UploadStatusIcon({status}: { status: UploadItemStatus }) {
     if (status === "uploading") {
-        return <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true"/>
+        return <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin motion-reduce:animate-none"
+                             aria-hidden="true"/>
     }
     if (status === "success") {
         return <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-marker-green" aria-hidden="true"/>
@@ -350,10 +342,10 @@ function formatFileSize(bytes: number) {
 }
 
 function CollectionRow({
-    collection,
-    selected,
-    onSelect,
-}: {
+                           collection,
+                           selected,
+                           onSelect,
+                       }: {
     collection: KnowledgeCollection
     selected: boolean
     onSelect: () => void
@@ -370,7 +362,8 @@ function CollectionRow({
         >
             <Box className="size-5 shrink-0" strokeWidth={1.8} aria-hidden="true"/>
             <span className="min-w-0 flex-1">
-                <span className={cn("block truncate font-bold", selected && "marker-underline")}>{collection.name}</span>
+                <span
+                    className={cn("block truncate font-bold", selected && "marker-underline")}>{collection.name}</span>
                 {collection.description && (
                     <span className="mt-1 block line-clamp-2 text-xs leading-4 text-ink/70">
                         {collection.description}
@@ -392,10 +385,10 @@ function CollectionsLoading() {
 }
 
 function CollectionsError({
-    message,
-    loading,
-    onRetry,
-}: {
+                              message,
+                              loading,
+                              onRetry,
+                          }: {
     message: string
     loading: boolean
     onRetry: () => void
@@ -411,7 +404,8 @@ function CollectionsError({
                 disabled={loading}
                 onClick={onRetry}
             >
-                <RefreshCw className={cn("size-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true"/>
+                <RefreshCw className={cn("size-4", loading && "animate-spin motion-reduce:animate-none")}
+                           aria-hidden="true"/>
                 重新加载
             </Button>
         </div>

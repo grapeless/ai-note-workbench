@@ -2,7 +2,7 @@ package com.lim.noteworkbench.storage;
 
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
-import com.lim.noteworkbench.config.StorageProperties;
+import com.lim.noteworkbench.config.properties.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
