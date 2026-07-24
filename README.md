@@ -42,8 +42,3 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-在 Windows 下若没有 Maven Wrapper，可使用本地 Maven 命令：
-
-```bash
-mvn spring-boot:run
-```
