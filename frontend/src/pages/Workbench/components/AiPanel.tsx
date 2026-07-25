@@ -1,27 +1,81 @@
-import {type FormEvent, useState} from "react"
-import {ExternalLink, Send, Sparkles} from "lucide-react"
-
-import {sources} from "@/data/workbench-data"
+import {type SubmitEvent, useEffect, useState} from "react"
+import {LoaderCircle, Send, Sparkles} from "lucide-react"
 import {cn} from "@/lib/utils"
-import {useWorkbenchStore} from "@/store/useWorkbenchStore"
+import {listChatModels, sendChatMessage} from "@/api/workbench/chat.ts";
 
-const answerCriteria = [
-    {id: "01", label: "导入后 1 分钟内可搜索", color: "bg-marker-yellow"},
-    {id: "02", label: "回答命中真正相关片段", color: "bg-marker-red"},
-    {id: "03", label: "每条结论都能打开原始来源", color: "bg-marker-blue text-white"},
-]
+interface ChatMessage {
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+}
 
-export function AiPanel() {
-    const messages = useWorkbenchStore((state) => state.messages)
-    const sendMessage = useWorkbenchStore((state) => state.sendMessage)
+interface SelectedChatModel {
+    providerCode: string
+    modelCode: string
+}
+
+const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : "请求失败，请稍后重试"
+
+function AiPanel() {
+    const [messages, setMessages] = useState<ChatMessage[]>([])
+    const [selectedModel, setSelectedModel] = useState<SelectedChatModel | null>(null)
     const [draft, setDraft] = useState("")
+    const [modelLoading, setModelLoading] = useState(true)
+    const [sending, setSending] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
-    const submit = (event: FormEvent) => {
+    useEffect(() => {
+        setModelLoading(true)
+        setError(null)
+
+        listChatModels()
+            .then(providers => {
+                const provider = providers?.[0];
+                const modelCode = provider?.defaultModel
+
+                if (!provider || !modelCode) {
+                    throw new Error("当前没有可用的 AI 模型")
+                }
+
+                setSelectedModel({
+                    providerCode: provider.providerCode,
+                    modelCode
+                })
+            })
+            .catch(e => setError(getErrorMessage(e)))
+            .finally(() => setModelLoading(false))
+    }, [])
+
+    const submit = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault()
         const content = draft.trim()
-        if (!content) return
-        sendMessage(content)
-        setDraft("")
+        if (!content || sending) return
+
+        //改为禁用按钮而不是抛出异常
+        if (!selectedModel) return
+
+        setMessages(chatMessages => [
+            ...chatMessages, {id: crypto.randomUUID(), role: 'user', content}
+        ])
+
+        setDraft('')
+        setSending(true)
+        setError(null)
+
+        sendChatMessage({...selectedModel, message: content})
+            .then(response => {
+                if (!response) {
+                    throw new Error("AI 回复为空")
+                }
+                setMessages(chatMessage => [...chatMessage, {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: response.content
+                }])
+            })
+            .catch(e => setError(getErrorMessage(e)))
+            .finally(() => setSending(false))
     }
 
     return (
@@ -33,10 +87,6 @@ export function AiPanel() {
                     <p className="mt-1 text-[11px] font-semibold">基于当前资料库回答</p>
                 </div>
                 <Sparkles className="ml-auto size-6" strokeWidth={1.5} aria-hidden="true"/>
-            </div>
-
-            <div className="raw-sticker my-4 w-fit bg-kraft/55 px-2 py-1 text-[10px] font-black">
-                CONTEXT: 当前文档 + 3 个相关文档
             </div>
 
             <div className="flex-1 space-y-4" aria-live="polite">
@@ -51,25 +101,17 @@ export function AiPanel() {
                         )}>
                             {message.content}
                         </div>
-                        {message.role === "assistant" && message.id === 2 && <AnswerCriteria/>}
                     </div>
                 ))}
+                {sending && (
+                    <p className={'text-sm font-semibold'} role={"status"}>
+                        <span className={'shimmer'}>正在思考...</span>
+                    </p>
+                )}
+                {error && (
+                    <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
+                )}
             </div>
-
-            <section className="mt-4" aria-labelledby="sources-title">
-                <h3 id="sources-title" className="mb-2 text-[11px] font-black">SOURCES / 3</h3>
-                <div className="space-y-2">
-                    {sources.map((source) => (
-                        <button key={source.id} type="button"
-                                className="flex min-h-11 w-full cursor-pointer items-center border border-ink/70 px-3 py-1.5 text-left hover:bg-marker-yellow/20 focus-visible:outline-3 focus-visible:outline-marker-blue">
-                            <span className="text-[11px] leading-4">
-                                <strong>[{source.id}] {source.title}</strong><br/>{source.detail}
-                            </span>
-                            <ExternalLink className="ml-auto size-4 shrink-0" aria-hidden="true"/>
-                        </button>
-                    ))}
-                </div>
-            </section>
 
             <form onSubmit={submit}
                   className="mt-3 flex min-h-12 border-2 border-ink bg-paper focus-within:outline-3 focus-within:outline-marker-blue">
@@ -81,24 +123,15 @@ export function AiPanel() {
                     placeholder="继续追问…"
                     className="min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold outline-none placeholder:text-ink/55"
                 />
-                <button type="submit" disabled={!draft.trim()}
+                <button type="submit" disabled={!draft.trim() || sending || modelLoading || !selectedModel}
                         className="my-0.5 mr-0.5 flex min-w-20 cursor-pointer items-center justify-center gap-1 border-2 border-ink bg-marker-yellow px-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-40">
-                    SEND <Send className="size-3.5" aria-hidden="true"/>
+                    {sending
+                        ? <>WAIT<LoaderCircle className={'size-3.5 animate-spin motion-reduce:animate-none'} aria-hidden={true}/></>
+                        : <>SEND <Send className="size-3.5" aria-hidden="true"/></>}
                 </button>
             </form>
         </aside>
     )
 }
 
-function AnswerCriteria() {
-    return (
-        <ol className="-mt-px border-x-2 border-b-2 border-ink p-3">
-            {answerCriteria.map((item) => (
-                <li key={item.id} className="flex min-h-9 items-center gap-3 text-xs font-semibold">
-                    <span className={cn("raw-sticker px-1.5 py-0.5 font-black", item.color)}>{item.id}</span>
-                    {item.label}
-                </li>
-            ))}
-        </ol>
-    )
-}
+export default AiPanel

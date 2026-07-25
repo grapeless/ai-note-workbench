@@ -1,4 +1,4 @@
-import {AiPanel} from "./components/AiPanel"
+import AiPanel from "./components/AiPanel"
 import {CollectionsPanel} from "./components/CollectionsPanel"
 import {DocumentDetailsPanel} from "./components/DocumentDetailsPanel"
 import {DocumentsPanel} from "./components/DocumentsPanel"

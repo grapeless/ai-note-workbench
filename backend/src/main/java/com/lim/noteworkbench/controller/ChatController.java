@@ -9,9 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -24,8 +22,8 @@ public class ChatController {
     private final ChatService chatService;
 
     @Operation(summary = "基础AI聊天")
-    @GetMapping("/doChat")
-    public Result<ChatResponseVO> chatWithAI(@Valid ChatRequestDTO chatRequestDTO) {
+    @PostMapping("/doChat")
+    public Result<ChatResponseVO> chatWithAI(@Valid @RequestBody ChatRequestDTO chatRequestDTO) {
         ChatResponseVO response = chatService.doChatWithAI(chatRequestDTO);
         return Result.success(response);
     }

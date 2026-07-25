@@ -1,7 +1,7 @@
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable.tsx";
 import {DocumentsPanel} from "@/pages/Workbench/components/DocumentsPanel.tsx";
 import {DocumentDetailsPanel} from "@/pages/Workbench/components/DocumentDetailsPanel.tsx";
-import {AiPanel} from "./AiPanel";
+import AiPanel from "./AiPanel";
 import {CollectionsPanel} from "./CollectionsPanel";
 import {useDefaultLayout} from "react-resizable-panels";
 
