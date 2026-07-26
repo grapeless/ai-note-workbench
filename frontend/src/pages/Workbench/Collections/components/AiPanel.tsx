@@ -1,7 +1,7 @@
 import {type SubmitEvent, useEffect, useState} from "react"
 import {LoaderCircle, Send, Sparkles} from "lucide-react"
 import {cn} from "@/lib/utils"
-import {listChatModels, sendChatMessage} from "@/api/workbench/chat.ts";
+import {listChatModels, sendChatMessage} from "@/api/workbench/chat"
 
 interface ChatMessage {
     id: string
@@ -89,7 +89,7 @@ function AiPanel() {
                 <Sparkles className="ml-auto size-6" strokeWidth={1.5} aria-hidden="true"/>
             </div>
 
-            <div className="flex-1 space-y-4" aria-live="polite">
+            <div className="flex flex-1 flex-col gap-4" aria-live="polite">
                 {messages.map((message) => (
                     <div key={message.id}>
                         <p className="mb-1.5 text-[10px] font-black uppercase">

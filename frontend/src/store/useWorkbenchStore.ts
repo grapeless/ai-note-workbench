@@ -3,7 +3,7 @@ import {create} from "zustand/react";
 import {listCollections} from "@/api/workbench/collections.ts";
 import {getDocument, listDocuments} from "@/api/workbench/documents.ts";
 
-export type WorkbenchView = "collections" | "documents" | "details" | "ai"
+export type WorkbenchView = "documents" | "details" | "ai"
 
 type ChatMessage = {
     id: number
@@ -64,7 +64,7 @@ let documentsRequestVersion = 0
 let documentRequestVersion = 0
 
 export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
-    activeView: "collections",
+    activeView: "documents",
 
     collections: [],
     selectedCollectionId: null,

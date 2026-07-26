@@ -8,6 +8,9 @@
 - 后端：Java 21 + Spring Boot 4.1
 - 存储：PostgreSQL + pgvector、Redis、本地对象存储目录
 
+## skills 
+ui-ux-pro-max: UI风格--40--反精致/原始美学
+
 ## 项目结构
 
 ```text

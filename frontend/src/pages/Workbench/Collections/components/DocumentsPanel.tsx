@@ -1,10 +1,13 @@
 import {useMemo} from "react"
-import {AlertCircle, FileText, LoaderCircle, RefreshCw, Search, X} from "lucide-react"
+import {AlertCircle, FileText, RefreshCw, Search, X} from "lucide-react"
 
 import type {KnowledgeDocument} from "@/api/workbench/types"
 import {Button} from "@/components/ui/button"
+import {Skeleton} from "@/components/ui/skeleton"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
+
+import {DocumentImport} from "./DocumentImport"
 
 const documentDateFormatter = new Intl.DateTimeFormat("zh-CN", {
     month: "numeric",
@@ -38,7 +41,7 @@ export function DocumentsPanel() {
     }, [documents, searchQuery])
 
     return (
-        <section className="panel-scroll flex h-full flex-col overflow-y-auto bg-paper" aria-labelledby="documents-title">
+        <section className="panel-scroll flex h-full min-h-0 flex-col overflow-y-auto bg-paper" aria-labelledby="documents-title">
             <div className="sticky top-0 z-10 border-b border-ink/55 bg-paper px-4 pb-3 pt-5">
                 <div className="flex items-center gap-3">
                     <h2 id="documents-title" className="min-w-0 truncate font-display text-xl font-black">
@@ -98,6 +101,8 @@ export function DocumentsPanel() {
                 </div>
             </div>
 
+            <DocumentImport/>
+
             <div className="flex-1" aria-live="polite" aria-busy={documentsLoading}>
                 {selectedCollectionId === null ? (
                     <DocumentListEmpty
@@ -115,7 +120,7 @@ export function DocumentsPanel() {
                 ) : documents.length === 0 ? (
                     <DocumentListEmpty
                         title="集合中暂无文档"
-                        description="可以从左侧导入 PDF、Markdown 或 TXT 文件。"
+                        description="可以使用上方的导入按钮添加 PDF、Markdown 或 TXT 文件。"
                     />
                 ) : filteredDocuments.length === 0 ? (
                     <DocumentListEmpty
@@ -186,9 +191,17 @@ function DocumentRow({
 
 function DocumentsLoading() {
     return (
-        <div className="px-5 py-10 text-center" role="status">
-            <LoaderCircle className="mx-auto size-6 animate-spin motion-reduce:animate-none" aria-hidden="true"/>
-            <p className="mt-3 text-sm font-bold">正在加载文档…</p>
+        <div role="status" aria-label="正在加载文档">
+            <span className="sr-only">正在加载文档…</span>
+            {[0, 1, 2, 3].map((item) => (
+                <div key={item} className="flex min-h-20 items-start gap-3 border-b border-ink/25 px-4 py-4">
+                    <Skeleton className="h-7 w-9 shrink-0 rounded-none"/>
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <Skeleton className="h-4 w-4/5 rounded-none"/>
+                        <Skeleton className="h-3 w-1/2 rounded-none"/>
+                    </div>
+                </div>
+            ))}
         </div>
     )
 }

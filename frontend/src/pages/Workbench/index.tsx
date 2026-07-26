@@ -1,49 +1,350 @@
-import AiPanel from "./components/AiPanel"
-import {CollectionsPanel} from "./components/CollectionsPanel"
-import {DocumentDetailsPanel} from "./components/DocumentDetailsPanel"
-import {DocumentsPanel} from "./components/DocumentsPanel"
-import {WorkbenchViewNav} from "./components/WorkbenchViewNav"
+import {type CSSProperties, useEffect, useState} from "react"
+import {AlertCircle, Box, Boxes, Brain, ChevronRight, RefreshCw, Settings2} from "lucide-react"
+import {NavLink, Outlet, useLocation, useNavigate} from "react-router"
 
+import type {KnowledgeCollection} from "@/api/workbench/types"
+import {Button} from "@/components/ui/button"
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarHeader,
+    SidebarInset,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarMenuSkeleton,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
+    SidebarProvider,
+    SidebarTrigger,
+} from "@/components/ui/sidebar"
+import {TooltipProvider} from "@/components/ui/tooltip"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
-import {useMediaQuery} from "@/hooks/useMediaQuery";
-import WorkbenchDesktopLayout from "@/pages/Workbench/components/WorkbenchDesktopLayout.tsx";
+
+const topLevelMenuClassName =
+    "group/section h-16 cursor-pointer rounded-none border-2 border-workbench-primary bg-workbench-primary-soft px-4 text-left text-ink shadow-[3px_3px_0_var(--workbench-primary)] transition-[background-color,color,box-shadow] duration-150 ease-out hover:bg-kraft/45 data-open:bg-workbench-primary-soft data-open:text-ink data-open:hover:bg-kraft/45 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar active:brightness-95 motion-reduce:transition-none"
+
+const nestedMenuClassName =
+    "mx-0 mt-2 translate-x-0 gap-2 border-y border-l-0 border-ink/15 bg-paper/85 px-3 py-3"
+
+const nestedMenuStateClassName =
+    "group/nested relative w-full translate-x-0 cursor-pointer justify-start rounded-none border border-ink/25 bg-paper px-4 text-left text-sm font-medium shadow-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-transparent hover:border-ink hover:bg-paper hover:shadow-[2px_2px_0_var(--kraft)] focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar data-active:border-ink data-active:bg-sidebar-accent data-active:font-bold data-active:text-sidebar-accent-foreground data-active:shadow-[3px_3px_0_var(--workbench-primary)] data-active:before:bg-marker-blue data-active:hover:bg-sidebar-accent data-active:hover:shadow-[3px_3px_0_var(--workbench-primary)] motion-reduce:transition-none"
 
 export function Workbench() {
-    const activeView = useWorkbenchStore((state) => state.activeView)
-    const isDesktop = useMediaQuery("(min-width: 80rem)")
+    const location = useLocation()
+    const navigate = useNavigate()
+    const collections = useWorkbenchStore((state) => state.collections)
+    const selectedCollectionId = useWorkbenchStore((state) => state.selectedCollectionId)
+    const collectionsLoading = useWorkbenchStore((state) => state.collectionsLoading)
+    const collectionsError = useWorkbenchStore((state) => state.collectionsError)
+    const loadCollections = useWorkbenchStore((state) => state.loadCollections)
+    const selectCollection = useWorkbenchStore((state) => state.selectCollection)
+
+    const collectionsActive = location.pathname.startsWith("/workbench/collections")
+    const settingsActive = location.pathname.startsWith("/workbench/settings")
+    const [collectionsOpen, setCollectionsOpen] = useState(!settingsActive)
+    const [settingsOpen, setSettingsOpen] = useState(settingsActive)
+
+    useEffect(() => {
+        void loadCollections()
+    }, [loadCollections])
 
     return (
-        <div className="paper-noise flex h-dvh min-h-dvh flex-col overflow-hidden bg-paper text-ink">
-            <a href="#main-content"
-               className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-marker-yellow focus:p-3 focus:font-bold">
-                跳到文档详情
-            </a>
-            <WorkbenchViewNav/>
-            <div className="min-h-0 flex-1 overflow-hidden">
-                {isDesktop ? (<WorkbenchDesktopLayout/>) : (
-                    <>
-                        <div
-                            className={cn("h-full min-h-0", activeView !== "collections" && "hidden")}>
-                            <CollectionsPanel/>
-                        </div>
+        <TooltipProvider>
+            <SidebarProvider
+                defaultOpen
+                className="h-dvh min-h-0 overflow-hidden bg-paper text-ink"
+                style={{"--sidebar-width": "20.5rem"} as CSSProperties}
+            >
+                <a
+                    href="#main-content"
+                    className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-marker-yellow focus:p-3 focus:font-bold"
+                >
+                    跳到主要内容
+                </a>
 
-                        <div
-                            className={cn("h-full min-h-0", activeView !== "documents" && "hidden")}>
-                            <DocumentsPanel/>
+                <Sidebar collapsible="offcanvas" className="border-r-2 border-ink">
+                    <SidebarHeader
+                        className="relative overflow-hidden border-b-2 border-ink bg-paper-warm px-6 py-5 text-ink">
+                        <p className="flex items-center gap-2 text-[10px] font-black tracking-[0.18em] text-pencil">
+                            <span className="block h-2 w-6 bg-marker-blue" aria-hidden="true"/>
+                            LOCAL-FIRST KNOWLEDGE SYSTEM
+                        </p>
+                        <h1 className="mt-2 font-display text-[1.7rem] leading-[0.95] font-black tracking-[-0.04em]">
+                            AI NOTE
+                            <br/>
+                            <span
+                                className="mt-1 inline-block bg-workbench-primary px-2 py-1 text-workbench-primary-foreground shadow-[3px_3px_0_var(--kraft)]">
+                                WORKBENCH
+                            </span>
+                        </h1>
+                        <div className="mt-4 border-t border-ink/20 pt-3">
+                            <p className="font-reading text-xs leading-4 italic text-pencil">
+                                本地优先 · 可检索 · 有引用
+                            </p>
                         </div>
+                    </SidebarHeader>
 
-                        <div
-                            className={cn("h-full min-h-0", activeView !== "details" && "hidden")}>
-                            <DocumentDetailsPanel/>
-                        </div>
+                    <SidebarContent className="panel-scroll workbench-sidebar-surface">
+                        <SidebarGroup className="p-0">
+                            <div
+                                className="flex items-center gap-3 px-5 pb-2 pt-4 text-[10px] font-black tracking-[0.16em] text-pencil">
+                                <span>WORKSPACE INDEX</span>
+                                <span className="h-px flex-1 bg-ink/25" aria-hidden="true"/>
+                            </div>
+                            <SidebarGroupContent>
+                                <SidebarMenu className="gap-4 px-3 pb-5">
+                                    <Collapsible open={collectionsOpen} onOpenChange={setCollectionsOpen}
+                                                 render={<SidebarMenuItem/>}>
+                                        <CollapsibleTrigger
+                                            render={
+                                                <SidebarMenuButton
+                                                    type="button"
+                                                    size="lg"
+                                                    className={topLevelMenuClassName}/>}>
+                                            <Boxes strokeWidth={1.75} className="size-5! text-workbench-primary"
+                                                   aria-hidden="true"/>
+                                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                                <span className="text-[13px] font-black tracking-[0.13em]">
+                                                    COLLECTIONS
+                                                </span>
+                                                <span
+                                                    className="font-reading text-xs font-normal italic tracking-normal text-workbench-primary">
+                                                    集合 · <span className={'text-base leading-none'}>{collections.length}</span> ITEMS
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    "ml-auto grid size-8 shrink-0 place-items-center border border-workbench-primary/35 text-workbench-primary",
+                                                    collectionsOpen && "bg-workbench-primary text-workbench-primary-foreground",
+                                                )}
+                                                aria-hidden="true"
+                                            >
+                                                <ChevronRight
+                                                    className={cn(
+                                                        "transition-transform duration-150 motion-reduce:transition-none",
+                                                        collectionsOpen && "rotate-90",
+                                                    )}
+                                                />
+                                            </span>
+                                        </CollapsibleTrigger>
 
-                        <div className={cn("h-full min-h-0", activeView !== "ai" && "hidden")}>
-                            <AiPanel/>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub className={nestedMenuClassName}>
+                                                <CollectionItems
+                                                    collections={collections}
+                                                    selectedCollectionId={selectedCollectionId}
+                                                    active={collectionsActive}
+                                                    loading={collectionsLoading}
+                                                    error={collectionsError}
+                                                    onRetry={() => void loadCollections()}
+                                                    onSelect={(id) => {
+                                                        void selectCollection(id)
+                                                        navigate("/workbench/collections")
+                                                    }}
+                                                />
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </Collapsible>
+
+                                    <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}
+                                                 render={<SidebarMenuItem/>}>
+                                        <CollapsibleTrigger render={
+                                            <SidebarMenuButton
+                                                type="button"
+                                                size="lg"
+                                                className={topLevelMenuClassName}/>}>
+
+                                            <Settings2 strokeWidth={1.75} className="size-5! text-workbench-primary"
+                                                       aria-hidden="true"/>
+                                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                                <span className="text-[13px] font-black tracking-[0.13em]">
+                                                    SETTINGS
+                                                </span>
+                                                <span
+                                                    className="font-reading text-xs font-normal italic tracking-normal text-workbench-primary">
+                                                    设置 · SYSTEM
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    "ml-auto grid size-8 shrink-0 place-items-center border border-workbench-primary/35 text-workbench-primary",
+                                                    settingsOpen && "bg-workbench-primary text-workbench-primary-foreground",
+                                                )}
+                                                aria-hidden="true"
+                                            >
+                                                <ChevronRight
+                                                    className={cn(
+                                                        "transition-transform duration-150 motion-reduce:transition-none",
+                                                        settingsOpen && "rotate-90",
+                                                    )}
+                                                />
+                                            </span>
+                                        </CollapsibleTrigger>
+
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub className={nestedMenuClassName}>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton
+                                                        render={<NavLink to="/workbench/settings/integrations"/>}
+                                                        isActive={location.pathname === "/workbench/settings/integrations"}
+                                                        className={cn(
+                                                            "min-h-14 py-2.5",
+                                                            nestedMenuStateClassName,
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className="grid size-8 shrink-0 place-items-center border border-ink/40 bg-paper-warm">
+                                                            <Brain strokeWidth={1.75} className="size-4!" aria-hidden="true"/>
+                                                        </span>
+                                                        <span className="min-w-0 flex-1 text-left">
+                                                            <span className="block truncate text-[13px] font-bold leading-5">
+                                                                Integrations
+                                                            </span>
+                                                            <span
+                                                                className="block text-xs font-normal leading-4 text-pencil">
+                                                                模型与外部服务
+                                                            </span>
+                                                        </span>
+                                                        <ChevronRight
+                                                            className="ml-auto size-4! shrink-0 text-pencil"
+                                                            aria-hidden="true"
+                                                        />
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </Collapsible>
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    </SidebarContent>
+                </Sidebar>
+
+                <SidebarInset
+                    id="main-content"
+                    className="paper-noise h-dvh min-h-0 overflow-hidden bg-paper"
+                >
+                    <div className="flex min-h-12 shrink-0 items-center border-b border-ink px-3 md:hidden">
+                        <SidebarTrigger aria-label="打开工作台导航"/>
+                        <span className="ml-3 text-xs font-black tracking-[0.06em]">AI NOTE WORKBENCH</span>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                        <Outlet/>
+                    </div>
+                </SidebarInset>
+            </SidebarProvider>
+        </TooltipProvider>
     )
+}
+
+function CollectionItems({
+                             collections,
+                             selectedCollectionId,
+                             active,
+                             loading,
+                             error,
+                             onRetry,
+                             onSelect,
+                         }: {
+    collections: KnowledgeCollection[]
+    selectedCollectionId: number | null
+    active: boolean
+    loading: boolean
+    error: string | null
+    onRetry: () => void
+    onSelect: (id: number) => void
+}) {
+    if (loading && collections.length === 0) {
+        return (
+            <>
+                {[0, 1, 2].map((item) => (
+                    <SidebarMenuSubItem key={item}>
+                        <SidebarMenuSkeleton
+                            showIcon
+                            className="h-[4.5rem] rounded-none border border-ink/20 bg-paper px-4"
+                        />
+                    </SidebarMenuSubItem>
+                ))}
+            </>
+        )
+    }
+
+    if (error) {
+        return (
+            <SidebarMenuSubItem>
+                <div
+                    className="border-2 border-ink bg-marker-red/10 p-4 shadow-[3px_3px_0_var(--marker-red)]"
+                    role="alert"
+                >
+                    <AlertCircle className="size-5 text-marker-red" aria-hidden="true"/>
+                    <p className="mt-2 text-sm font-black">集合加载失败</p>
+                    <p className="mt-1 wrap-break-word text-xs leading-5 text-pencil">{error}</p>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 rounded-none border-ink bg-paper font-bold shadow-[2px_2px_0_var(--ink)]"
+                        disabled={loading}
+                        onClick={onRetry}
+                    >
+                        <RefreshCw
+                            data-icon="inline-start"
+                            className={cn(loading && "animate-spin motion-reduce:animate-none")}
+                            aria-hidden="true"
+                        />
+                        重新加载
+                    </Button>
+                </div>
+            </SidebarMenuSubItem>
+        )
+    }
+
+    if (collections.length === 0) {
+        return (
+            <SidebarMenuSubItem>
+                <p
+                    className="border border-dashed border-ink/40 bg-paper/80 px-4 py-6 text-center font-reading text-xs italic text-pencil">
+                    暂无集合
+                </p>
+            </SidebarMenuSubItem>
+        )
+    }
+
+    return collections.map((collection) => (
+        <SidebarMenuSubItem key={collection.id}>
+            <SidebarMenuSubButton
+                render={
+                    <button
+                        type="button"
+                        aria-pressed={collection.id === selectedCollectionId}
+                        onClick={() => onSelect(collection.id)}
+                    />
+                }
+                isActive={active && collection.id === selectedCollectionId}
+                className={cn(
+                    "h-auto min-h-[4.5rem] py-3",
+                    nestedMenuStateClassName,
+                )}
+            >
+                <span className="grid size-8 shrink-0 place-items-center border border-ink/40 bg-paper-warm">
+                    <Box strokeWidth={1.75} className="size-4!" aria-hidden="true"/>
+                </span>
+                <span className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-[13px] font-bold leading-5">{collection.name}</span>
+                    {collection.description && (
+                        <span className="mt-0.5 block line-clamp-2 text-xs font-normal leading-4 text-pencil">
+                            {collection.description}
+                        </span>
+                    )}
+                </span>
+                <ChevronRight className="ml-auto size-4! shrink-0 text-pencil" aria-hidden="true"/>
+            </SidebarMenuSubButton>
+        </SidebarMenuSubItem>
+    ))
 }

@@ -20,6 +20,10 @@
   --color-marker-blue: var(--marker-blue);
   --color-marker-red: var(--marker-red);
   --color-marker-green: var(--marker-green);
+  --color-workbench-primary: var(--workbench-primary);
+  --color-workbench-primary-hover: var(--workbench-primary-hover);
+  --color-workbench-primary-soft: var(--workbench-primary-soft);
+  --color-workbench-primary-foreground: var(--workbench-primary-foreground);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -68,6 +72,10 @@
   --marker-blue: #2855d9;
   --marker-red: #ff5947;
   --marker-green: #22b573;
+  --workbench-primary: #40566f;
+  --workbench-primary-hover: #30465e;
+  --workbench-primary-soft: #dce4ea;
+  --workbench-primary-foreground: #f7f1e4;
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -148,6 +156,22 @@
     opacity: 0.45;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E");
     mix-blend-mode: multiply;
+  }
+
+  .workbench-sidebar-surface {
+    background-color: var(--paper-warm);
+    background-image:
+      linear-gradient(
+        90deg,
+        transparent 0 20px,
+        rgb(40 85 217 / 12%) 20px 21px,
+        transparent 21px
+      ),
+      repeating-linear-gradient(
+        180deg,
+        transparent 0 31px,
+        rgb(26 26 26 / 5%) 31px 32px
+      );
   }
 
   .raw-sticker {

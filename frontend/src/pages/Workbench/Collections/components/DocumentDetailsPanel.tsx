@@ -1,7 +1,8 @@
-import {AlertCircle, FileSearch, FileText, LoaderCircle, RefreshCw} from "lucide-react"
+import {AlertCircle, FileSearch, FileText, RefreshCw} from "lucide-react"
 
 import type {KnowledgeDocument} from "@/api/workbench/types"
 import {Button} from "@/components/ui/button"
+import {Skeleton} from "@/components/ui/skeleton"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
@@ -27,9 +28,9 @@ export function DocumentDetailsPanel() {
         : null
 
     return (
-        <main
-            id="main-content"
-            className="panel-scroll h-full overflow-y-auto bg-paper px-5 py-6 sm:px-8"
+        <section
+            id="document-content"
+            className="panel-scroll h-full min-h-0 overflow-y-auto bg-paper px-5 py-6 sm:px-8"
             tabIndex={-1}
             aria-busy={documentLoading}
         >
@@ -49,7 +50,7 @@ export function DocumentDetailsPanel() {
                                     loading={documentLoading}
                                     onRetry={() => void loadDocument(selectedDocumentId)}/>)}
             </article>
-        </main>
+        </section>
     )
 }
 
@@ -143,9 +144,27 @@ function DocumentDetailEmpty() {
 
 function DocumentDetailLoading() {
     return (
-        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center" role="status">
-            <LoaderCircle className="size-8 animate-spin motion-reduce:animate-none" aria-hidden="true"/>
-            <p className="mt-4 text-sm font-black">正在加载文档详情…</p>
+        <div className="py-2" role="status" aria-label="正在加载文档详情">
+            <span className="sr-only">正在加载文档详情…</span>
+            <Skeleton className="h-3 w-28 rounded-none"/>
+            <Skeleton className="mt-4 h-8 w-3/4 rounded-none"/>
+            <div className="mt-5 flex gap-3 border-b-2 border-ink pb-5">
+                <Skeleton className="h-7 w-12 rounded-none"/>
+                <Skeleton className="h-7 w-20 rounded-none"/>
+                <Skeleton className="h-7 w-16 rounded-none"/>
+            </div>
+            <div className="py-7">
+                <Skeleton className="h-3 w-24 rounded-none"/>
+                <div className="mt-4 grid border-l border-t border-ink/25 sm:grid-cols-2">
+                    {[0, 1, 2, 3, 4, 5].map((item) => (
+                        <div key={item} className="flex min-h-20 flex-col gap-3 border-b border-r border-ink/25 p-4">
+                            <Skeleton className="h-3 w-16 rounded-none"/>
+                            <Skeleton className="h-4 w-4/5 rounded-none"/>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <Skeleton className="h-24 w-full rounded-none"/>
         </div>
     )
 }
