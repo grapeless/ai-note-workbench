@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.lim.noteworkbench.mapper.ChunkMapper">
+
+    <resultMap id="ChunkResultMap" type="com.lim.noteworkbench.model.entity.Chunk">
+        <id property="id" column="id"/>
+        <result property="documentId" column="document_id"/>
+        <result property="chunkIndex" column="chunk_index"/>
+        <result property="content" column="content"/>
+        <result property="sourceLocator" column="source_locator"/>
+        <result property="tokenCount" column="token_count"/>
+
+        <result property="metadata"
+                column="metadata"
+                javaType="java.util.Map"
+                jdbcType="OTHER"/>
+
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <delete id="deleteByDocumentId">
+        DELETE
+        FROM chunk
+        WHERE document_id = #{documentId}
+    </delete>
+
+    <insert id="batchInsert">
+        INSERT INTO chunk(document_id, chunk_index, content, source_locator, token_count, metadata)
+        VALUES
+        <foreach collection="chunks" item="chunk" separator=",">
+            (#{chunk.documentId},
+             #{chunk.chunkIndex},
+             #{chunk.content},
+             #{chunk.sourceLocator},
+             #{chunk.tokenCount},
+             #{chunk.metadata,javaType=java.util.Map,jdbcType=OTHER})
+        </foreach>
+    </insert>
+
+    <select id="findByDocumentId" resultMap="ChunkResultMap">
+        SELECT *
+        FROM chunk
+        WHERE document_id = #{documentId}
+        ORDER BY chunk_index
+    </select>
+</mapper>

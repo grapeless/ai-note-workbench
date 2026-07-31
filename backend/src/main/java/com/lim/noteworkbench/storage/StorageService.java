@@ -1,5 +1,6 @@
 package com.lim.noteworkbench.storage;
 
+import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface StorageService {
@@ -13,4 +14,9 @@ public interface StorageService {
      * 根据相对路径删除文件。
      */
     void delete(String relativePath);
+
+    /**
+     * 加载文件
+     */
+    Resource loadAsResource(String relativePath);
 }

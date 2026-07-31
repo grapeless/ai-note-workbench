@@ -2,6 +2,8 @@ export interface KnowledgeCollection {
     id: number
     name: string
     description: string | null
+    embeddingProvider: string | null
+    embeddingModel: string | null
     createTime: string
     updateTime: string
 }
@@ -32,12 +34,10 @@ export interface ChatResponse {
 
 export interface ChatModel {
     code: string
-    name: string
 }
 
-export interface ModelProvider{
-    providerCode:string
-    providerName:string
-    defaultModel:string
-    models : ChatModel[]
+export interface ModelProvider {
+    providerCode: string
+    defaultModel: string
+    models: ChatModel[]
 }

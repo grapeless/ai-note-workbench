@@ -11,23 +11,21 @@ import java.util.Map;
 
 @Data
 @Component
-@ConfigurationProperties(prefix = "app.ai.chat")
-public class ChatModelProperties {
+@ConfigurationProperties(prefix = "app.ai.embedding")
+public class EmbeddingModelProperties {
     private Map<String, ProviderProperties> providers = new LinkedHashMap<>();
 
     @Data
     public static class ProviderProperties {
         private String baseUrl;
-
         private String apiKey;
-
-        private String defaultModel;
-
         private List<ModelProperties> models = new ArrayList<>();
     }
 
     @Data
     public static class ModelProperties {
         private String code;
+        private Integer dimension;
+        private String vectorTableName;
     }
 }

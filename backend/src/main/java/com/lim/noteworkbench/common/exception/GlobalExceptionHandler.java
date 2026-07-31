@@ -32,9 +32,10 @@ import java.util.Objects;
  *
  * <p>异常抛出原则：</p>
  * <ol>
- *     <li>业务异常尽量统一为BusinessException抛出，同时返回明确的业务错误码和提示便于前端处理。</li>
- *     <li>业务代码不要直接返回 Result.error(...)，避免响应体错误码与HTTP状态不一致，
- *     需要通过ResultCode同时定义业务码和HTTP状态，在异常处理器里转为ResponseEntity返回。</li>
+ *     <li>业务异常尽量统一为BusinessException抛出，同时返回明确的业务错误码和提示便于前端处理。
+ *     （业务代码不要直接返回 Result.error(...)，避免响应体错误码与HTTP状态不一致，
+ *      需要通过ResultCode同时定义业务码和HTTP状态，在异常处理器里转为ResponseEntity返回）
+ *     </li>
  *     <li>常见框架异常由框架抛出，在全局异常处理器里按需单独捕获，例如参数校验、类型转换、JSON 解析失败等。</li>
  *     <li>内部编程异常原样抛出，例如IllegalArgumentException、NullPointerException，让它们进入兜底。
  *     用Exception兜底必须记录完整堆栈便于自己调试，但对前端只返回通用系统错误，避免泄露内部信息。</li>

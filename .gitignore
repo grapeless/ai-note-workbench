@@ -82,6 +82,7 @@ temp/
 *.tmp
 *.bak
 *.swp
+docs/assets/note.md
 
 
 storage/**

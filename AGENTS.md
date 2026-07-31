@@ -17,46 +17,28 @@ AI Note Workbench 是一个面向本地笔记与文档的 AI 知识库工作台�
 
 ## 本地开发
 
-- 后端的redis与postgres(pgvetor)部署在服务器上，其余是本地环境。
+- 后端的 Redis 与 PostgreSQL（pgvector）部署在服务器上，其余是本地环境。
 - 前端命令在 `frontend/` 目录执行，后端命令在 `backend/` 目录执行。
-
-## 验证与重操作
-
-- 每次代码或文档更改后，无需自动执行编译、打包、测试、代码生成、启动服务、构建容器、安装或下载依赖等耗时操作。
-- 默认仅进行与本次修改直接相关的静态检查、差异检查和必要的文件内容核对。
-- 仅在用户明确要求时执行上述重操作；如果 AI 认为确有必要，应先说明原因并征得用户同意。
-- 不要在连续的小修改之间重复验证；需要验证时，应在修改完成后集中执行用户指定的检查。
 
 ## 前端代码文件组织规范
 
 AI 在新增、移动或重构文件时，必须遵循以下规范：
-1. 自己的React 组件名称必须使用 PascalCase。 组件名称必须以大写字母开头，例如 UserCard、LoginForm、SidebarMenu，禁止使用 userCard、user-card 等名称。
-2. 路由页面统一放在 src/pages/ 下。
-    - 每个路由页面必须创建独立文件夹，文件夹名称使用 PascalCase，并与页面组件名称一致；页面入口统一命名为 index.tsx。 例如：src/pages/Home/index.tsx、src/pages/Login/index.tsx、src/pages/NotFound/index.tsx。
-    - 二级及多级路由按父子关系组织。 子路由页面放在父级页面目录下；需要对多个子页面分类时，使用小写的 kebab-case 文件夹作为分类目录，实际路由页面仍使用 PascalCase 文件夹，并在其中创建 index.tsx。 示例结构：src/pages/Home/sidebar-menu1/Role1/index.tsx、src/pages/Home/sidebar-menu1/Role2/index.tsx。
-    - 仅当页面复杂，并且能够识别出两个或以上相对独立的职责边界时，才在页面目录内部拆分文件。可拆分的职责通常应具备独立的数据或状态边界、明确的业务含义、复用价值，或拆分后能显著降低页面理解成本。
-3. 路由配置统一放在 src/router/ 下。 路由入口文件为 src/router/index.tsx，页面组件中不得重复维护全局路由配置。
-4. 状态管理统一放在 src/store/ 下。 Store 文件必须使用 useXxxStore.ts 格式命名，导出的 Store Hook 名称必须与文件名一致，例如 useUserStore.ts 导出 useUserStore。
-5. 自定义 Hook 统一放在 src/hooks/ 下。 Hook 文件及导出函数必须以 use 开头，并使用 camelCase，例如 useAuth.ts、useUserInfo.ts、useTablePagination.ts。一个文件原则上只维护一个主要 Hook。
-6. 通用组件统一放在 src/components/ 下。 路由页面不得放进 components；仅被某个页面使用的局部组件，可放在该页面目录的 components/ 子目录中。
-7. API 统一放在 src/api/ 下，数据模型优先使用interface定义，只用需要type时才使用type声明类型，使用函数表达式定义api。
+
+1. 自己的 React 组件名称必须使用 PascalCase。组件名称必须以大写字母开头，例如 UserCard、LoginForm、SidebarMenu，禁止使用 userCard、user-card 等名称。
+2. 路由页面统一放在 `src/pages/` 下。
+   - 每个路由页面必须创建独立文件夹，文件夹名称使用 PascalCase，并与页面组件名称一致；页面入口统一命名为 `index.tsx`。例如：`src/pages/Home/index.tsx`、`src/pages/Login/index.tsx`、`src/pages/NotFound/index.tsx`。
+   - 二级及多级路由按父子关系组织。子路由页面放在父级页面目录下；需要对多个子页面分类时，使用小写的 kebab-case 文件夹作为分类目录，实际路由页面仍使用 PascalCase 文件夹，并在其中创建 `index.tsx`。示例结构：`src/pages/Home/sidebar-menu1/Role1/index.tsx`、`src/pages/Home/sidebar-menu1/Role2/index.tsx`。
+   - 仅当页面复杂，并且能够识别出两个或以上相对独立的职责边界时，才在页面目录内部拆分文件。可拆分的职责通常应具备独立的数据或状态边界、明确的业务含义、复用价值，或拆分后能显著降低页面理解成本。
+3. 路由配置统一放在 `src/router/` 下。路由入口文件为 `src/router/index.tsx`，页面组件中不得重复维护全局路由配置。
+4. 状态管理统一放在 `src/store/` 下。Store 文件必须使用 `useXxxStore.ts` 格式命名，导出的 Store Hook 名称必须与文件名一致，例如 `useUserStore.ts` 导出 `useUserStore`。
+5. 自定义 Hook 统一放在 `src/hooks/` 下。Hook 文件及导出函数必须以 use 开头，并使用 camelCase，例如 `useAuth.ts`、`useUserInfo.ts`、`useTablePagination.ts`。一个文件原则上只维护一个主要 Hook。
+6. 通用组件统一放在 `src/components/` 下。路由页面不得放进 components；仅被某个页面使用的局部组件，可放在该页面目录的 `components/` 子目录中。
+7. API 统一放在 `src/api/` 下，数据模型优先使用 interface 定义，只在需要 type 时才使用 type 声明类型，使用函数表达式定义 API。
 8. 避免过度拆分文件和过度设计。拆分必须同时满足“当前页面已经具有一定复杂度”和“被拆内容形成了相对独立职责”，不能仅因文件较长、存在一段 JSX 或包含多个 Hook 就拆分。
-9. Store 和自定义 Hook 必须按实际职责使用。仅当状态需要跨多个无直接父子关系的组件、跨页面共享，或需要独立持久化与统一管理时，才允许放入 src/store/；页面内部状态、表单状态、弹窗状态、筛选条件和分页状态应优先保留在页面或组件内部。仅当一段有状态逻辑需要被多个组件复用，或逻辑复杂到需要与视图分离时，才允许提取为自定义 Hook；禁止为了减少几行代码、包装单个 useState/useEffect，或仅在一个组件中使用而创建 Hook。
-
-
-
-## 学习助手模式
-
-当用户询问“如何实现”“怎么设计”等设计性问题时，除非用户特殊强调，否则：
-- 默认只解释推荐方案、实现思路和关键步骤。
-- 只提供必要的核心代码片段或伪代码。
-- 不输出完整组件、完整文件或大段可直接复制的代码。
-- 说明关键 API、数据流、边界条件和常见陷阱。
-- 除非用户明确说“帮我实现”“直接修改代码”或“给出完整代码”，否则
-  不要修改文件。
-- 回答尽量简洁，引导用户自己完成实现。
+9. Store 和自定义 Hook 必须按实际职责使用。仅当状态需要跨多个无直接父子关系的组件、跨页面共享，或需要独立持久化与统一管理时，才允许放入 `src/store/`；页面内部状态、表单状态、弹窗状态、筛选条件和分页状态应优先保留在页面或组件内部。仅当一段有状态逻辑需要被多个组件复用，或逻辑复杂到需要与视图分离时，才允许提取为自定义 Hook；禁止为了减少几行代码、包装单个 `useState`/`useEffect`，或仅在一个组件中使用而创建 Hook。
 
 ## 异常处理
-- 请优先保持代码逻辑完整可读性高，不要为了理论上的边缘情况主动添加额外的防御性逻辑，例如 `cancelled` 标记、重复的空值判断、无明确需求的清理函数或兼容分支降低代码的可读性。 
-- 只有在确实存在竞态、组件卸载后更新状态、资源泄漏或明确业务风险时，才添加这类保护代码。 
-- 不要过度设计，但也不要因此放弃异常处理，比如该有的参数，请求结果判空该有还是得有，但不要引入当前需求没有要求的复杂性。
+
+- 优先保持代码逻辑完整、可读性高，不要为了理论上的边缘情况主动添加额外的防御性逻辑，例如 `cancelled` 标记、重复的空值判断、无明确需求的清理函数或兼容分支，以免降低代码可读性。
+- 只有在确实存在竞态、组件卸载后更新状态、资源泄漏或明确业务风险时，才添加这类保护代码。
+- 不要过度设计，但也不要因此放弃必要的异常处理。该有的参数与请求结果判空仍应保留，但不要引入当前需求未要求的复杂性。

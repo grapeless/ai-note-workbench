@@ -17,14 +17,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 不同模型提供商
+ * <pre>
+ *   ChatModelProperties
+ *           ↓
+ *   OpenAiChatModel
+ *           ↓
+ *   ChatClient
+ * </pre>
  */
 @Configuration
 public class ChatClientConfig {
 
-    //解析配置文件，将ChatClientRegistry初始化并成为Bean
-    @Bean
-    public ChatClientRegistry chatClientRegistry(
+    /**
+     * 解析配置文件，初始化providerCode(提供商)与ChatClient(其ChatModel配置为默认模型)的映射
+     */
+    @Bean("chatClients")
+    public Map<String, ChatClient> chatClients(
             ChatModelProperties properties,
             ChatClientBuilderConfigurer configurer,
             ObjectProvider<ObservationRegistry> observationRegistry,
@@ -34,7 +42,7 @@ public class ChatClientConfig {
     ) {
         Map<String, ChatClient> clients = new LinkedHashMap<>();
 
-        properties.getProviders().forEach((providerName, providerProperties) -> {
+        properties.getProviders().forEach((providerCode, providerProperties) -> {
             OpenAiChatModel chatModel = buildChatModel(providerProperties);
 
             //为了保留可观测性和自定义功能，您应该注入 ChatClientBuilderConfigurer 来辅助创建ChatClient
@@ -45,10 +53,10 @@ public class ChatClientConfig {
                             toolCallingAdvisorBuilder.getIfAvailable()))
                     .build();
 
-            clients.put(providerName, chatClient);
+            clients.put(providerCode, chatClient);
         });
 
-        return new ChatClientRegistry(clients);
+        return Map.copyOf(clients);
     }
 
     //一个提供商，一个chatModel，多个chatClient（现在只初始化一个）
@@ -61,31 +69,6 @@ public class ChatClientConfig {
                         .build())
                 .build();
     }
-
-    /*@Bean
-    //@Primary //ChatClient 上的 @Primary：解决业务类直接注入 ChatClient 时选哪个 Bean 的歧义
-    public ChatClient dashscopeChatClient(@Qualifier("dashscopeChatModel") OpenAiChatModel chatModel,
-                                          ChatClientBuilderConfigurer configurer,
-                                          ObjectProvider<ObservationRegistry> observationRegistry,
-                                          ObjectProvider<ChatClientObservationConvention> chatClientObservationConvention,
-                                          ObjectProvider<AdvisorObservationConvention> advisorObservationConvention,
-                                          ObjectProvider<ToolCallingAdvisor.Builder<?>> toolCallingAdvisorBuilder) {
-        return buildChatClient(chatModel, configurer, observationRegistry,
-                chatClientObservationConvention, advisorObservationConvention, toolCallingAdvisorBuilder);
-    }
-
-
-    @Primary
-    @Bean
-    public ChatClient deepseekCharClient(@Qualifier("deepseekChatModel") OpenAiChatModel chatModel,
-                                         ChatClientBuilderConfigurer configurer,
-                                         ObjectProvider<ObservationRegistry> observationRegistry,
-                                         ObjectProvider<ChatClientObservationConvention> chatClientObservationConvention,
-                                         ObjectProvider<AdvisorObservationConvention> advisorObservationConvention,
-                                         ObjectProvider<ToolCallingAdvisor.Builder<?>> toolCallingAdvisorBuilder) {
-        return buildChatClient(chatModel, configurer, observationRegistry,
-                chatClientObservationConvention, advisorObservationConvention, toolCallingAdvisorBuilder);
-    }*/
 }
 
 

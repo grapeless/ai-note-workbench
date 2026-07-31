@@ -1,7 +1,8 @@
 package com.lim.noteworkbench.controller;
 
 import com.lim.noteworkbench.common.response.Result;
-import com.lim.noteworkbench.model.entity.Document;
+import com.lim.noteworkbench.etl.EtlPipeline;
+import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,22 +21,23 @@ import java.util.List;
 @Tag(name = "文档")
 public class DocumentController {
     private final DocumentService documentService;
+    private final EtlPipeline etlPipeline;
 
     @Operation(summary = "上传文档")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Result<Document> upload(
+    public Result<KnowledgeDocument> upload(
             @Parameter(description = "集合 ID")
             @RequestParam("collectionId")
             @Positive(message = "集合ID必须为正数") Long collectionId,
             @Parameter(description = "文档文件")
             @RequestPart("file") MultipartFile file) {
-        Document document = documentService.upload(collectionId, file);
+        KnowledgeDocument document = documentService.upload(collectionId, file);
         return Result.success(document);
     }
 
     @Operation(summary = "查询集合下的文档列表")
     @GetMapping("/list")
-    public Result<List<Document>> list(
+    public Result<List<KnowledgeDocument>> list(
             @Parameter(description = "集合 ID")
             @RequestParam("collectionId")
             @Positive(message = "集合ID必须为正数") Long collectionId) {
@@ -44,10 +46,16 @@ public class DocumentController {
 
     @Operation(summary = "查询文档详情")
     @GetMapping("/{id}")
-    public Result<Document> getById(
+    public Result<KnowledgeDocument> getById(
             @Parameter(description = "文档 ID")
             @PathVariable
             @Positive(message = "文档ID必须为正数") Long id) {
         return Result.success(documentService.getById(id));
+    }
+
+    @Operation(summary = "ETL文档")
+    @PostMapping("/{id}/process")
+    public Result<KnowledgeDocument> process(@PathVariable @Positive(message = "文档ID不合法") Long id) {
+        return Result.success(etlPipeline.process(id));
     }
 }

@@ -2,24 +2,30 @@ package com.lim.noteworkbench.service;
 
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
-import com.lim.noteworkbench.config.ChatClientRegistry;
 import com.lim.noteworkbench.config.properties.ChatModelProperties;
 import com.lim.noteworkbench.model.dto.ChatRequestDTO;
 import com.lim.noteworkbench.model.vo.ChatResponseVO;
 import com.lim.noteworkbench.model.vo.ModelProviderVO;
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
-@RequiredArgsConstructor
 public class ChatService {
-    private final ChatClientRegistry chatClientRegistry;
+    private final Map<String, ChatClient> chatClients;
     private final ChatModelProperties chatModelProperties;
+
+    public ChatService(@Qualifier("chatClients") Map<String, ChatClient> chatClients,
+                       ChatModelProperties chatModelProperties
+    ) {
+        this.chatClients = chatClients;
+        this.chatModelProperties = chatModelProperties;
+    }
 
     public ChatResponseVO doChatWithAI(ChatRequestDTO chatRequestDTO) {
         //1.检查即提供商是否存在
@@ -35,7 +41,7 @@ public class ChatService {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "暂不支持该提供商的该模型：" + chatRequestDTO.modelCode());
 
         //3.根据提供商获取对应chatClient
-        ChatClient chatClient = chatClientRegistry.getChatClient(chatRequestDTO.providerCode());
+        ChatClient chatClient = chatClients.get(chatRequestDTO.providerCode());
 
         //4.使用本次请求指定的模型发送消息
         String content = chatClient.prompt()

@@ -39,4 +39,15 @@ public class KnowledgeCollection {
      * 集合最后更新时间。
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 使用的嵌入模型提供商
+     */
+    private String embeddingProvider;
+
+    /**
+     * 使用的嵌入模型
+     */
+    private String embeddingModel;
+
 }

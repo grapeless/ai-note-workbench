@@ -6,7 +6,7 @@
 <mapper namespace="com.lim.noteworkbench.mapper.DocumentMapper">
 
     <resultMap id="DocumentResultMap"
-               type="com.lim.noteworkbench.model.entity.Document">
+               type="com.lim.noteworkbench.model.entity.KnowledgeDocument">
 
         <id property="id"
             column="id"/>
@@ -37,7 +37,7 @@
     </resultMap>
 
     <insert id="insert"
-            parameterType="com.lim.noteworkbench.model.entity.Document"
+            parameterType="com.lim.noteworkbench.model.entity.KnowledgeDocument"
             useGeneratedKeys="true"
             keyProperty="id"
             keyColumn="id">

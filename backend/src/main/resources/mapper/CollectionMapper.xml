@@ -5,6 +5,8 @@
         <id column="id" jdbcType="BIGINT" property="id" />
         <result column="name" jdbcType="VARCHAR" property="name" />
         <result column="description" jdbcType="VARCHAR" property="description" />
+        <result column="embedding_provider" jdbcType="VARCHAR" property="embeddingProvider" />
+        <result column="embedding_model" jdbcType="VARCHAR" property="embeddingModel" />
         <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
         <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
     </resultMap>
@@ -12,21 +14,21 @@
     <insert id="insert" parameterType="com.lim.noteworkbench.model.entity.KnowledgeCollection"
             useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO knowledge_collection (
-        name, description, create_time, update_time
+        name, description, embedding_provider, embedding_model
         ) VALUES (
         #{name}, #{description},
-        #{createTime}, #{updateTime}
+        #{embeddingProvider}, #{embeddingModel}
         )
     </insert>
 
     <select id="findById" resultMap="BaseResultMap">
-        SELECT id, name, description, create_time, update_time
+        SELECT id, name, description, embedding_provider, embedding_model, create_time, update_time
         FROM knowledge_collection
         WHERE id = #{id}
     </select>
 
     <select id="findAll" resultMap="BaseResultMap">
-        SELECT id, name, description, create_time, update_time
+        SELECT id, name, description, embedding_provider, embedding_model, create_time, update_time
         FROM knowledge_collection
         ORDER BY create_time DESC
     </select>
@@ -35,7 +37,7 @@
         UPDATE knowledge_collection
         SET name = #{name},
         description = #{description},
-        update_time = #{updateTime}
+        update_time = now()
         WHERE id = #{id}
     </update>
 

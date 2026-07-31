@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Document {
+public class KnowledgeDocument {
     /**
      * 文档唯一标识。
      */
@@ -31,7 +31,7 @@ public class Document {
     private String title;
 
     /**
-     * 源文件的存储路径。
+     * 源文件的存储路径(相对路径)。
      */
     private String sourcePath;
 
