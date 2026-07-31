@@ -2,9 +2,10 @@ package com.lim.noteworkbench.service;
 
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
-import com.lim.noteworkbench.mapper.CollectionMapper;
-import com.lim.noteworkbench.mapper.DocumentMapper;
+import com.lim.noteworkbench.mapper.KnowledgeCollectionMapper;
+import com.lim.noteworkbench.mapper.KnowledgeDocumentMapper;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.model.enums.DocumentStatus;
 import com.lim.noteworkbench.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,15 +18,15 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-public class DocumentService {
-    private final DocumentMapper documentMapper;
-    private final CollectionMapper collectionMapper;
+public class KnowledgeDocumentService {
+    private final KnowledgeDocumentMapper knowledgeDocumentMapper;
+    private final KnowledgeCollectionMapper knowledgeCollectionMapper;
     private final StorageService storageService;
 
     @Transactional
     public KnowledgeDocument upload(Long collectionId, MultipartFile file) {
         if (file.isEmpty()) throw new BusinessException(ResultCode.PARAMS_ERROR, "上传文件不能为空");
-        if (collectionMapper.findById(collectionId) == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
+        if (knowledgeCollectionMapper.findById(collectionId) == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
 
         // 上传文件至对应集合的存储目录
         String sourcePath = storageService.store(collectionId, file);
@@ -39,16 +40,9 @@ public class DocumentService {
                     .errorMessage(null)
                     .build();
 
-            int affectedRows = documentMapper.insert(document);
+            knowledgeDocumentMapper.insert(document);
 
-            if (affectedRows != 1) throw new IllegalStateException("文档记录插入失败");
-            if (document.getId() == null) throw new IllegalStateException("数据库没有回填文档 ID");
-
-            KnowledgeDocument savedDocument = documentMapper.findById(document.getId());
-
-            if (savedDocument == null) throw new IllegalStateException("插入成功，但没有查询到文档记录");
-
-            return savedDocument;
+            return knowledgeDocumentMapper.findById(document.getId());
         } catch (RuntimeException exception) {
             // 数据库操作失败时，清理已经保存的文件
             storageService.delete(sourcePath);
@@ -57,7 +51,7 @@ public class DocumentService {
     }
 
     public KnowledgeDocument getById(Long id) {
-        KnowledgeDocument document = documentMapper.findById(id);
+        KnowledgeDocument document = knowledgeDocumentMapper.findById(id);
 
         if (document == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "文档不存在");
 
@@ -65,13 +59,23 @@ public class DocumentService {
     }
 
     public List<KnowledgeDocument> listByCollectionId(Long collectionId) {
-        if (collectionMapper.findById(collectionId) == null) {
+        if (knowledgeCollectionMapper.findById(collectionId) == null) {
             throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
         }
 
-        return documentMapper.findByCollectionId(collectionId);
+        return knowledgeDocumentMapper.findByCollectionId(collectionId);
     }
 
+    public void updateStatus(Long id, DocumentStatus status, String errorMessage) {
+        knowledgeDocumentMapper.updateStatus(id, status.name(), errorMessage);
+    }
+
+    /**
+     * 从上传文件中提取文档标题，无法获取有效文件名时返回默认标题。
+     *
+     * @param file 上传的文件
+     * @return 文档标题
+     */
     private String resolveTitle(MultipartFile file) {
         String filename = file.getOriginalFilename();
 
@@ -82,11 +86,15 @@ public class DocumentService {
         // 只保留文件名，避免客户端传入完整路径
         String cleanFilename = StringUtils.getFilename(filename);
 
-        return cleanFilename == null
-                ? "未命名文档"
-                : cleanFilename;
+        return cleanFilename == null ? "未命名文档" : cleanFilename;
     }
 
+    /**
+     * 根据上传文件的扩展名解析其内容类型。
+     *
+     * @param file 上传的文件
+     * @return 文件的内容类型
+     */
     private String resolveContentType(MultipartFile file) {
         String filename = file.getOriginalFilename();
 

@@ -3,9 +3,9 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.lim.noteworkbench.mapper.DocumentMapper">
+<mapper namespace="com.lim.noteworkbench.mapper.KnowledgeDocumentMapper">
 
-    <resultMap id="DocumentResultMap"
+    <resultMap id="KnowledgeDocumentResultMap"
                type="com.lim.noteworkbench.model.entity.KnowledgeDocument">
 
         <id property="id"
@@ -42,7 +42,7 @@
             keyProperty="id"
             keyColumn="id">
 
-        INSERT INTO document (
+        INSERT INTO knowledge_document (
         collection_id,
         title,
         source_path,
@@ -61,7 +61,7 @@
     </insert>
 
     <select id="findById"
-            resultMap="DocumentResultMap">
+            resultMap="KnowledgeDocumentResultMap">
 
         SELECT id,
         collection_id,
@@ -72,12 +72,12 @@
         error_message,
         create_time,
         update_time
-        FROM document
+        FROM knowledge_document
         WHERE id = #{id}
     </select>
 
     <select id="findByCollectionId"
-            resultMap="DocumentResultMap">
+            resultMap="KnowledgeDocumentResultMap">
 
         SELECT id,
         collection_id,
@@ -88,14 +88,14 @@
         error_message,
         create_time,
         update_time
-        FROM document
+        FROM knowledge_document
         WHERE collection_id = #{collectionId}
         ORDER BY create_time DESC
     </select>
 
     <update id="updateStatus">
 
-        UPDATE document
+        UPDATE knowledge_document
         SET status = #{status},
         error_message = #{errorMessage},
         update_time = now()
@@ -104,7 +104,7 @@
 
     <delete id="deleteById">
 
-        DELETE FROM document
+        DELETE FROM knowledge_document
         WHERE id = #{id}
     </delete>
 

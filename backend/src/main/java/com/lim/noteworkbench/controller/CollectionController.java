@@ -3,7 +3,7 @@ package com.lim.noteworkbench.controller;
 import com.lim.noteworkbench.common.response.Result;
 import com.lim.noteworkbench.model.dto.CreateCollectionDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeCollection;
-import com.lim.noteworkbench.service.CollectionService;
+import com.lim.noteworkbench.service.KnowledgeCollectionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +19,7 @@ import java.util.List;
 @RequestMapping("/collections")
 @RequiredArgsConstructor
 public class CollectionController {
-    private final CollectionService collectionService;
+    private final KnowledgeCollectionService knowledgeCollectionService;
 
     @Operation(summary = "创建集合")
     @PostMapping
@@ -27,13 +27,13 @@ public class CollectionController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "创建集合参数")
             @RequestBody
             @Valid CreateCollectionDTO request) {
-        return Result.success(collectionService.create(request));
+        return Result.success(knowledgeCollectionService.create(request));
     }
 
     @Operation(summary = "查询集合列表")
     @GetMapping("/list")
     public Result<List<KnowledgeCollection>> list() {
-        return Result.success(collectionService.list());
+        return Result.success(knowledgeCollectionService.list());
     }
 
     @Operation(summary = "查询集合详情")
@@ -42,7 +42,7 @@ public class CollectionController {
             @Parameter(description = "集合 ID")
             @PathVariable
             @Positive(message = "集合ID必须为正数") Long id) {
-        return Result.success(collectionService.getById(id));
+        return Result.success(knowledgeCollectionService.getById(id));
     }
 
     @Operation(summary = "删除集合")
@@ -51,7 +51,7 @@ public class CollectionController {
             @Parameter(description = "集合 ID")
             @PathVariable
             @Positive(message = "集合ID必须为正数") Long id) {
-        collectionService.delete(id);
+        knowledgeCollectionService.delete(id);
         return Result.success();
     }
 }

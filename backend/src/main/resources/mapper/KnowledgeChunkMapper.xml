@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.lim.noteworkbench.mapper.KnowledgeChunkMapper">
+
+    <resultMap id="KnowledgeChunkResultMap" type="com.lim.noteworkbench.model.entity.KnowledgeChunk">
+        <id property="id" column="id"/>
+        <result property="knowledgeDocumentId" column="knowledge_document_id"/>
+        <result property="order" column="chunk_order"/>
+        <result property="sourceLocator" column="source_locator"/>
+        <result property="tokenCount" column="token_count"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <delete id="deleteByKnowledgeDocumentId">
+        DELETE
+        FROM knowledge_chunk
+        WHERE knowledge_document_id = #{knowledgeDocumentId}
+    </delete>
+
+    <insert id="batchInsert">
+        INSERT INTO knowledge_chunk(knowledge_document_id, chunk_order, source_locator, token_count)
+        VALUES
+        <foreach collection="knowledgeChunks" item="chunk" separator=",">
+            (#{chunk.knowledgeDocumentId},
+            #{chunk.order},
+            #{chunk.sourceLocator},
+            #{chunk.tokenCount})
+        </foreach>
+    </insert>
+
+    <select id="findByKnowledgeDocumentId" resultMap="KnowledgeChunkResultMap">
+        SELECT id,
+               knowledge_document_id,
+               chunk_order,
+               source_locator,
+               token_count,
+               create_time
+        FROM knowledge_chunk
+        WHERE knowledge_document_id = #{knowledgeDocumentId}
+        ORDER BY chunk_order
+    </select>
+</mapper>

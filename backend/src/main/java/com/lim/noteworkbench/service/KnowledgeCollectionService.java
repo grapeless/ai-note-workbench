@@ -3,7 +3,7 @@ package com.lim.noteworkbench.service;
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.EmbeddingModelProperties;
-import com.lim.noteworkbench.mapper.CollectionMapper;
+import com.lim.noteworkbench.mapper.KnowledgeCollectionMapper;
 import com.lim.noteworkbench.model.dto.CreateCollectionDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeCollection;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +15,8 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
-public class CollectionService {
-    private final CollectionMapper collectionMapper;
+public class KnowledgeCollectionService {
+    private final KnowledgeCollectionMapper knowledgeCollectionMapper;
     private final EmbeddingModelProperties embeddingModelProperties;
 
     @Transactional
@@ -42,33 +42,23 @@ public class CollectionService {
                 .embeddingModel(request.embeddingModel())
                 .build();
 
-        int affectedRows = collectionMapper.insert(collection);
+        knowledgeCollectionMapper.insert(collection);
 
-        if (affectedRows != 1) throw new IllegalStateException("集合记录插入失败");
-        if (collection.getId() == null) throw new IllegalStateException("数据库没有回填集合 ID");
-
-        KnowledgeCollection savedCollection = collectionMapper.findById(collection.getId());
-
-        if (savedCollection == null) throw new IllegalStateException("插入成功，但没有查询到集合记录");
-
-        return savedCollection;
+        return knowledgeCollectionMapper.findById(collection.getId());
     }
 
     public KnowledgeCollection getById(Long id) {
-        KnowledgeCollection collection = collectionMapper.findById(id);
+        KnowledgeCollection collection = knowledgeCollectionMapper.findById(id);
         if (collection == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "集合不存在");
 
         return collection;
     }
 
     public List<KnowledgeCollection> list() {
-        return collectionMapper.findAll();
+        return knowledgeCollectionMapper.findAll();
     }
 
     public void delete(Long id) {
-        int affectedRows = collectionMapper.deleteById(id);
-
-        if (affectedRows == 0) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "集合不存在");
-        if (affectedRows != 1) throw new IllegalStateException("集合删除结果异常");
+        knowledgeCollectionMapper.deleteById(id);
     }
 }

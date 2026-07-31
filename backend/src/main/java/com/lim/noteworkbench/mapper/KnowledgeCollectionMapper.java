@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
-public interface CollectionMapper {
+public interface KnowledgeCollectionMapper {
     int insert(KnowledgeCollection collection);
 
     KnowledgeCollection findById(@Param("id") Long id);

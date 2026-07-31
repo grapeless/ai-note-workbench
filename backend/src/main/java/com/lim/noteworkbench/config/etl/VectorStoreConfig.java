@@ -1,4 +1,4 @@
-package com.lim.noteworkbench.config;
+package com.lim.noteworkbench.config.etl;
 
 import com.lim.noteworkbench.config.properties.EmbeddingModelProperties;
 import org.springframework.ai.document.MetadataMode;
@@ -34,7 +34,7 @@ public class VectorStoreConfig {
                 EmbeddingModel embeddingModel = buildEmbeddingModel(providerProperties, modelProperties);
 
                 PgVectorStore pgVectorStore = PgVectorStore.builder(jdbcTemplate, embeddingModel)
-                        //使用BIGINT类型的Chunk ID作为向量记录ID，与向量表到chunk(id)的外键保持一致
+                        // 使用 KnowledgeChunk 的 BIGINT 主键作为向量记录 ID，与向量表到 knowledge_chunk(id) 的外键保持一致
                         .idType(PgVectorStore.PgIdType.BIGSERIAL)
                         .dimensions(modelProperties.getDimension())
                         //使用余弦距离计算文本语义相似度

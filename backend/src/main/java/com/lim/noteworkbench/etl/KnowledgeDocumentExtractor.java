@@ -24,6 +24,7 @@ public class KnowledgeDocumentExtractor {
 
     /**
      * 根据传递的knowledgeDocument中的目录信息，从存储目录取出后将其转换为Document类型方便后续处理。
+     * 只负责把特定文件格式可靠地读取出来，去掉文件格式细节，保留页码、标题等天然结构，不保证Document大小适合。
      * @param knowledgeDocument  要读取为Document类型的用户文件对象
      * @return 该文件转换后得到的Document列表
      */

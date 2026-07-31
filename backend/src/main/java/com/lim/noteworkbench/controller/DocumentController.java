@@ -3,7 +3,7 @@ package com.lim.noteworkbench.controller;
 import com.lim.noteworkbench.common.response.Result;
 import com.lim.noteworkbench.etl.EtlPipeline;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
-import com.lim.noteworkbench.service.DocumentService;
+import com.lim.noteworkbench.service.KnowledgeDocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,7 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "文档")
 public class DocumentController {
-    private final DocumentService documentService;
+    private final KnowledgeDocumentService knowledgeDocumentService;
     private final EtlPipeline etlPipeline;
 
     @Operation(summary = "上传文档")
@@ -31,7 +31,7 @@ public class DocumentController {
             @Positive(message = "集合ID必须为正数") Long collectionId,
             @Parameter(description = "文档文件")
             @RequestPart("file") MultipartFile file) {
-        KnowledgeDocument document = documentService.upload(collectionId, file);
+        KnowledgeDocument document = knowledgeDocumentService.upload(collectionId, file);
         return Result.success(document);
     }
 
@@ -41,7 +41,7 @@ public class DocumentController {
             @Parameter(description = "集合 ID")
             @RequestParam("collectionId")
             @Positive(message = "集合ID必须为正数") Long collectionId) {
-        return Result.success(documentService.listByCollectionId(collectionId));
+        return Result.success(knowledgeDocumentService.listByCollectionId(collectionId));
     }
 
     @Operation(summary = "查询文档详情")
@@ -50,7 +50,7 @@ public class DocumentController {
             @Parameter(description = "文档 ID")
             @PathVariable
             @Positive(message = "文档ID必须为正数") Long id) {
-        return Result.success(documentService.getById(id));
+        return Result.success(knowledgeDocumentService.getById(id));
     }
 
     @Operation(summary = "ETL文档")

@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 /**
  * 文档分块实体，用于记录文档切分后的文本块信息。
@@ -15,27 +14,23 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Chunk {
+public class KnowledgeChunk {
     /**
-     * 文档分块唯一标识。
+     * 文档分块唯一标识。<br>
+     * 用于数据库保持唯一，主键/外键等数据库原生用途。
      */
     private Long id;
 
     /**
-     * 分块所属文档的唯一标识，注意该id应从{@link KnowledgeDocument}中的id，
-     * 而非框架提供的{@link org.springframework.ai.document.Document}的id。
+     * 分块所属文档（{@link KnowledgeDocument}）的唯一标识。
      */
-    private Long documentId;
+    private Long knowledgeDocumentId;
 
     /**
-     * 分块在文档中的顺序索引，从 0 开始。
+     * 同一 {@link KnowledgeDocument} 下所有 {@link KnowledgeChunk} 的有序标识。<br>
+     * 用于业务需要，例如相邻Chunk查询、引用、调试等。
      */
-    private Integer chunkIndex;
-
-    /**
-     * 分块的文本内容。
-     */
-    private String content;
+    private Integer order;
 
     /**
      * 分块在源文件中的定位信息，例如页码。
@@ -46,11 +41,6 @@ public class Chunk {
      * 分块包含的 Token 数量。
      */
     private Integer tokenCount;
-
-    /**
-     * 元信息
-     */
-    private Map<String ,Object> metadata;
 
     /**
      * 分块创建时间。

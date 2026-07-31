@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
-public interface DocumentMapper {
+public interface KnowledgeDocumentMapper {
     int insert(KnowledgeDocument document);
 
     KnowledgeDocument findById(@Param("id") Long id);
