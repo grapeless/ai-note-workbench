@@ -18,7 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/collections")
 @RequiredArgsConstructor
-public class CollectionController {
+public class KnowledgeCollectionController {
     private final KnowledgeCollectionService knowledgeCollectionService;
 
     @Operation(summary = "创建集合")

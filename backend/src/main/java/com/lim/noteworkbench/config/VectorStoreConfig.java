@@ -1,4 +1,4 @@
-package com.lim.noteworkbench.config.etl;
+package com.lim.noteworkbench.config;
 
 import com.lim.noteworkbench.config.properties.EmbeddingModelProperties;
 import org.springframework.ai.document.MetadataMode;
@@ -66,7 +66,7 @@ public class VectorStoreConfig {
                         .apiKey(providerProperties.getApiKey())
                         .model(modelProperties.getCode())
                         .build())
-                .metadataMode(MetadataMode.NONE)
+                .metadataMode(MetadataMode.NONE) //生成向量时，要不要把Document的metadata一起发给Embedding模型
                 .build();
     }
 

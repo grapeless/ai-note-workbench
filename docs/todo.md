@@ -18,6 +18,7 @@
   - [ ] **文档转换（切割）**（**T**ransform）
   - [ ] **文档存储**（**L**oad/Write）
   - [ ] **过滤检索、查询增强**
+- [ ] 除了使用使用Extractor、Transformer进行切分，支持直接使用LLM进行切分
 - [ ] **引用跳转 + 原文高亮**
 - [ ] **支持Tool Calling，MCP**
 - [ ] **在线编辑md/txt，实时预览pdf/word**

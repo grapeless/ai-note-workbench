@@ -1,7 +1,8 @@
-package com.lim.noteworkbench.etl;
+package com.lim.noteworkbench.rag.etl;
 
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
+import com.lim.noteworkbench.model.constant.KnowledgeMetadataKey;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
@@ -37,6 +38,9 @@ public class KnowledgeDocumentTransformer {
                 .toList();
     }
 
+
+    //todo 继续打磨sourceLocator和未知metadata的构造
+
     /**
      * 为文本块文档补充集合、文档、索引及来源定位等元数据信息。
      *
@@ -50,12 +54,12 @@ public class KnowledgeDocumentTransformer {
         metadata.remove("chunk_index");
         metadata.remove("parent_document_id");
         metadata.putAll(Map.of(
-                "collectionId", knowledgeDocument.getCollectionId(),
-                "knowledgeDocumentId", knowledgeDocument.getId(),
-                "order", order
+                KnowledgeMetadataKey.COLLECTION_ID, knowledgeDocument.getCollectionId(),
+                KnowledgeMetadataKey.KNOWLEDGE_DOCUMENT_ID, knowledgeDocument.getId(),
+                KnowledgeMetadataKey.ORDER, order
         ));
         String sourceLocator = resolveSourceLocator(knowledgeDocument.getContentType(), chunkDocument, order);
-        if (sourceLocator != null) metadata.put("sourceLocator", sourceLocator);
+        if (sourceLocator != null) metadata.put(KnowledgeMetadataKey.SOURCE_LOCATOR, sourceLocator);
 
         return chunkDocument.mutate().metadata(metadata).build();
     }

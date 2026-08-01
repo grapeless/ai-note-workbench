@@ -1,4 +1,4 @@
-package com.lim.noteworkbench.etl;
+package com.lim.noteworkbench.rag.etl;
 
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
@@ -67,10 +67,10 @@ public class KnowledgeDocumentExtractor {
         return new MarkdownDocumentReader(resource, MarkdownDocumentReaderConfig.builder()
                 //用水平线分割的文本将创建新的Document。默认值为false，意味着由水平线分隔的文本不会创建新文档。
                 .withHorizontalRuleCreateDocument(false)
-                //Documents中将包含代码块。默认值为false，意味着所有代码块都会放在单独的文档中。
+                //默认值为false，意味着所有代码块都会放在单独的文档中。
                 .withIncludeCodeBlock(false)
-                //Documents中将包含引用块。默认值为false，意味着所有引用块都会放在单独的文档中。
-                .withIncludeBlockquote(false)
+                //默认值为false，意味着所有引用块都会放在单独的文档中。
+                .withIncludeBlockquote(true)
                 .build()).read();
     }
 }

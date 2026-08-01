@@ -1,4 +1,4 @@
-package com.lim.noteworkbench.config.etl;
+package com.lim.noteworkbench.config;
 
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.context.annotation.Bean;

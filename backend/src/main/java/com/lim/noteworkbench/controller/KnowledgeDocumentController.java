@@ -1,8 +1,8 @@
 package com.lim.noteworkbench.controller;
 
 import com.lim.noteworkbench.common.response.Result;
-import com.lim.noteworkbench.etl.EtlPipeline;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.rag.etl.EtlPipeline;
 import com.lim.noteworkbench.service.KnowledgeDocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,11 +15,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Tag(name = "文档")
 @RestController
 @RequestMapping("/documents")
 @RequiredArgsConstructor
-@Tag(name = "文档")
-public class DocumentController {
+public class KnowledgeDocumentController {
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final EtlPipeline etlPipeline;
 

@@ -1,4 +1,4 @@
-package com.lim.noteworkbench.etl;
+package com.lim.noteworkbench.rag.etl;
 
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.enums.DocumentStatus;
