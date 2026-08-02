@@ -4,7 +4,7 @@ export const BASE_URL = (
 
 export interface Result<T> {
     code: number
-    data: T | null
+    data: T
     message: string
 }
 
@@ -17,7 +17,7 @@ export interface Result<T> {
 async function request<T = unknown>(
     path: string,
     options: RequestInit = {}
-): Promise<T | null> {
+): Promise<T> {
     const response = await fetch(`${BASE_URL}${path}`, options)
 
     // HTTP 状态码不在 200～299 范围内时，
@@ -33,7 +33,7 @@ async function request<T = unknown>(
 
     // 成功但没有响应体
     if (response.status === 204) {
-        return null
+        throw new Error('空响应体')
     }
 
     // 解析后端统一响应
@@ -54,7 +54,7 @@ export function get<T = unknown>(
     path: string,
     params: Record<string, string | number | boolean | null | undefined> = {},
     options: Omit<RequestInit, 'method' | 'body'> = {}
-): Promise<T | null> {
+): Promise<T> {
     const searchParams = new URLSearchParams()
 
     Object.entries(params).forEach(([key, value]) => {
@@ -85,7 +85,7 @@ export function post<T = unknown>(
     path: string,
     data?: unknown,
     options: JsonRequestOptions = {}
-): Promise<T | null> {
+): Promise<T> {
     return jsonRequest<T>('POST', path, data, options)
 }
 
@@ -96,7 +96,7 @@ export function put<T = unknown>(
     path: string,
     data?: unknown,
     options: JsonRequestOptions = {}
-): Promise<T | null> {
+): Promise<T> {
     return jsonRequest<T>('PUT', path, data, options)
 }
 
@@ -107,7 +107,7 @@ export function remove<T = unknown>(
     path: string,
     data?: unknown,
     options: JsonRequestOptions = {}
-): Promise<T | null> {
+): Promise<T> {
     return jsonRequest<T>('DELETE', path, data, options)
 }
 
@@ -119,7 +119,7 @@ function jsonRequest<T = unknown>(
     path: string,
     data?: unknown,  //更安全的any，不能直接操作该类型的值
     options: JsonRequestOptions = {}
-): Promise<T | null> {
+): Promise<T> {
     const headers = new Headers(options.headers)
 
     // 有请求数据且调用者未指定类型时，默认按 JSON 发送
@@ -142,7 +142,7 @@ export function upload<T = unknown>(
     path: string,
     formData: FormData,
     options: Omit<RequestInit, 'method' | 'body'> = {}
-): Promise<T | null> {
+): Promise<T> {
     return request<T>(path, {
         ...options,
         method: 'POST',
