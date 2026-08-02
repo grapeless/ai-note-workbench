@@ -2,6 +2,7 @@ import {type SubmitEvent, useEffect, useState} from "react"
 import {LoaderCircle, Send, Sparkles} from "lucide-react"
 import {cn} from "@/lib/utils"
 import {listChatModels, sendChatMessage} from "@/api/workbench/chat"
+import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 
 interface ChatMessage {
     id: string
@@ -24,6 +25,7 @@ function AiPanel() {
     const [modelLoading, setModelLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const selectedCollectionId = useWorkbenchStore(state => state.selectedCollectionId)
 
     useEffect(() => {
         setModelLoading(true)
@@ -53,7 +55,7 @@ function AiPanel() {
         if (!content || sending) return
 
         //改为禁用按钮而不是抛出异常
-        if (!selectedModel) return
+        if (!selectedModel || selectedCollectionId === null) return
 
         setMessages(chatMessages => [
             ...chatMessages, {id: crypto.randomUUID(), role: 'user', content}
@@ -63,7 +65,12 @@ function AiPanel() {
         setSending(true)
         setError(null)
 
-        sendChatMessage({...selectedModel, message: content})
+        sendChatMessage({
+            ...selectedModel,
+            message: content,
+            collectionId: selectedCollectionId,
+            mode: 'RAG'
+        })
             .then(response => {
                 if (!response) {
                     throw new Error("AI 回复为空")
@@ -123,10 +130,12 @@ function AiPanel() {
                     placeholder="继续追问…"
                     className="min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold outline-none placeholder:text-ink/55"
                 />
-                <button type="submit" disabled={!draft.trim() || sending || modelLoading || !selectedModel}
+                <button type="submit"
+                        disabled={!draft.trim() || sending || modelLoading || !selectedModel || selectedCollectionId === null}
                         className="my-0.5 mr-0.5 flex min-w-20 cursor-pointer items-center justify-center gap-1 border-2 border-ink bg-marker-yellow px-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-40">
                     {sending
-                        ? <>WAIT<LoaderCircle className={'size-3.5 animate-spin motion-reduce:animate-none'} aria-hidden={true}/></>
+                        ? <>WAIT<LoaderCircle className={'size-3.5 animate-spin motion-reduce:animate-none'}
+                                              aria-hidden={true}/></>
                         : <>SEND <Send className="size-3.5" aria-hidden="true"/></>}
                 </button>
             </form>

@@ -1,5 +1,7 @@
 package com.lim.noteworkbench.config;
 
+import com.lim.noteworkbench.common.exception.BusinessException;
+import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.EmbeddingModelProperties;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -26,7 +28,7 @@ import java.util.Map;
 public class VectorStoreConfig {
 
     @Bean
-    public Map<String, Map<String, PgVectorStore>> pgVectorStores(JdbcTemplate jdbcTemplate, EmbeddingModelProperties properties) {
+    public VectorStoreRegistry vectorStoreRegistry(JdbcTemplate jdbcTemplate, EmbeddingModelProperties properties) {
         Map<String, Map<String, PgVectorStore>> whichProvider = new LinkedHashMap<>();
         properties.getProviders().forEach((providerCode, providerProperties) -> {
             Map<String, PgVectorStore> whichModel = new LinkedHashMap<>();
@@ -56,7 +58,7 @@ public class VectorStoreConfig {
             whichProvider.put(providerCode, Map.copyOf(whichModel));
         });
 
-        return Map.copyOf(whichProvider);
+        return new VectorStoreRegistry(Map.copyOf(whichProvider));
     }
 
     private EmbeddingModel buildEmbeddingModel(EmbeddingModelProperties.ProviderProperties providerProperties, EmbeddingModelProperties.ModelProperties modelProperties) {
@@ -70,4 +72,27 @@ public class VectorStoreConfig {
                 .build();
     }
 
+    public static final class VectorStoreRegistry {
+        private final Map<String, Map<String, PgVectorStore>> vectorStores;
+
+        private VectorStoreRegistry(Map<String, Map<String, PgVectorStore>> vectorStores) {
+            this.vectorStores = vectorStores;
+        }
+
+        public PgVectorStore get(String providerCode, String modelCode) {
+            Map<String, PgVectorStore> providerStores = vectorStores.get(providerCode);
+            if (providerStores == null) {
+                throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的模型提供商" + providerCode);
+            }
+
+            PgVectorStore vectorStore = providerStores.get(modelCode);
+            if (vectorStore == null) {
+                throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的嵌入模型" + modelCode);
+            }
+
+            return vectorStore;
+        }
+    }
 }
+
+

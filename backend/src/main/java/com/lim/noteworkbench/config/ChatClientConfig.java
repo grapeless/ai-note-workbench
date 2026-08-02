@@ -1,5 +1,7 @@
 package com.lim.noteworkbench.config;
 
+import com.lim.noteworkbench.common.exception.BusinessException;
+import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.ChatModelProperties;
 import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
@@ -31,8 +33,8 @@ public class ChatClientConfig {
     /**
      * 解析配置文件，初始化providerCode(提供商)与ChatClient(其ChatModel配置为默认模型)的映射
      */
-    @Bean("chatClients")
-    public Map<String, ChatClient> chatClients(
+    @Bean
+    public ChatClientRegistry chatClientRegistry(
             ChatModelProperties properties,
             ChatClientBuilderConfigurer configurer,
             ObjectProvider<ObservationRegistry> observationRegistry,
@@ -56,7 +58,7 @@ public class ChatClientConfig {
             clients.put(providerCode, chatClient);
         });
 
-        return Map.copyOf(clients);
+        return new ChatClientRegistry(Map.copyOf(clients));
     }
 
     //一个提供商，一个chatModel，多个chatClient（现在只初始化一个）
@@ -68,6 +70,23 @@ public class ChatClientConfig {
                         .model(providerProperties.getDefaultModel())
                         .build())
                 .build();
+    }
+
+    public static final class ChatClientRegistry {
+        private final Map<String, ChatClient> chatClients;
+
+        private ChatClientRegistry(Map<String, ChatClient> chatClients) {
+            this.chatClients = chatClients;
+        }
+
+        public ChatClient get(String providerCode) {
+            ChatClient chatClient = chatClients.get(providerCode);
+            if (chatClient == null) {
+                throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的模型提供商：" + providerCode);
+            }
+
+            return chatClient;
+        }
     }
 }
 

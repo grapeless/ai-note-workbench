@@ -43,6 +43,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <!--RetrievalAugmentationAdvisor-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-rag</artifactId>
+        </dependency>
 
         <!--DocumentWriter（手动配置的VectorStore）-->
         <dependency>

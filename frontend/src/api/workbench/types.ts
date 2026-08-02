@@ -20,10 +20,14 @@ export interface KnowledgeDocument {
     updateTime: string
 }
 
+export type ChatMode = 'PLAIN' | 'RAG' | 'AUTO'
+
 export interface ChatRequest {
+    collectionId: number
     providerCode: string
     modelCode: string
     message: string
+    mode: ChatMode
 }
 
 export interface ChatResponse {

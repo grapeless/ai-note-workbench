@@ -21,10 +21,10 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    @Operation(summary = "基础AI聊天")
+    @Operation(summary = "AI聊天")
     @PostMapping("/doChat")
     public Result<ChatResponseVO> chatWithAI(@Valid @RequestBody ChatRequestDTO chatRequestDTO) {
-        ChatResponseVO response = chatService.doChatWithAI(chatRequestDTO);
+        ChatResponseVO response = chatService.chat(chatRequestDTO);
         return Result.success(response);
     }
 

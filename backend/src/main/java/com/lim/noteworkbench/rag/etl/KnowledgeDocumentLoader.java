@@ -1,12 +1,12 @@
 package com.lim.noteworkbench.rag.etl;
 
+import com.lim.noteworkbench.config.VectorStoreConfig.VectorStoreRegistry;
 import com.lim.noteworkbench.mapper.KnowledgeChunkMapper;
 import com.lim.noteworkbench.mapper.KnowledgeCollectionMapper;
 import com.lim.noteworkbench.model.constant.KnowledgeMetadataKey;
 import com.lim.noteworkbench.model.entity.KnowledgeChunk;
 import com.lim.noteworkbench.model.entity.KnowledgeCollection;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
-import com.lim.noteworkbench.rag.VectorStoreRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
