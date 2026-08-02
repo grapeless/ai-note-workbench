@@ -117,10 +117,10 @@ function AiPanel() {
         setError(null)
 
         sendChatMessage({
+            collectionId: selectedCollectionId,
             providerCode: selectedModel.providerCode,
             modelCode: selectedModel.modelCode,
             message: content,
-            collectionId: selectedCollectionId,
             mode: chatMode
         })
             .then(response => {
@@ -135,45 +135,47 @@ function AiPanel() {
     }
 
     return (
-        <aside className="panel-scroll flex h-full flex-col overflow-y-auto bg-paper px-4 py-5"
+        <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-paper px-4 pb-5"
                aria-labelledby="ai-title">
-            <div className="flex items-start border-b-2 border-ink pb-3">
-                <div>
-                    <h2 id="ai-title" className="font-display text-2xl font-black">ASK / AI</h2>
-                    <p className="mt-1 text-[11px] font-semibold">基于当前资料库回答</p>
-                </div>
-                <Sparkles className="ml-auto size-6" strokeWidth={1.5} aria-hidden="true"/>
-            </div>
+            <div className="panel-scroll -mr-4 min-h-0 flex-1 overflow-y-auto pr-4 pt-5">
 
-            <div className="flex flex-1 flex-col gap-4" aria-live="polite">
-                {messages.map((message) => (
-                    <div key={message.id}>
-                        <p className="mb-1.5 text-[10px] font-black uppercase">
-                            {message.role === "user" ? "YOU /" : "WORKBENCH /"}
-                        </p>
-                        <div className={cn(
-                            "border-2 border-ink p-3 text-sm leading-6",
-                            message.role === "assistant" ? "bg-white/30" : "bg-paper",
-                        )}>
-                            {message.content}
-                        </div>
+                <div className="flex items-start border-b-2 border-ink pb-3">
+                    <div>
+                        <h2 id="ai-title" className="font-display text-2xl font-black">ASK / AI</h2>
+                        <p className="mt-1 text-[11px] font-semibold">基于当前资料库回答</p>
                     </div>
-                ))}
-                {sending && (
-                    <p className={'text-sm font-semibold'} role={"status"}>
-                        <span className={'shimmer'}>正在思考...</span>
-                    </p>
-                )}
-                {error && (
-                    <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
-                )}
+                    <Sparkles className="ml-auto size-6" strokeWidth={1.5} aria-hidden="true"/>
+                </div>
+
+                <div className="flex flex-col gap-4" aria-live="polite">
+                    {messages.map((message) => (
+                        <div key={message.id}>
+                            <p className="mb-1.5 text-[10px] font-black uppercase">
+                                {message.role === "user" ? "YOU /" : "WORKBENCH /"}
+                            </p>
+                            <div className={cn(
+                                "border-2 border-ink p-3 text-sm leading-6",
+                                message.role === "assistant" ? "bg-white/30" : "bg-paper",
+                            )}>
+                                {message.content}
+                            </div>
+                        </div>
+                    ))}
+                    {sending && (
+                        <p className={'text-sm font-semibold'} role={"status"}>
+                            <span className={'shimmer'}>正在思考...</span>
+                        </p>
+                    )}
+                    {error && (
+                        <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
+                    )}
+                </div>
             </div>
 
             <form onSubmit={submit}
-                  className="relative mt-4 flex min-h-24 flex-col border-2 border-ink bg-paper shadow-[4px_4px_0_var(--kraft)] focus-within:outline-3 focus-within:outline-marker-blue">
+                  className="relative mt-4 flex min-h-24 shrink-0 flex-col border-2 border-ink bg-paper shadow-[4px_4px_0_var(--kraft)] focus-within:outline-3 focus-within:outline-marker-blue">
                 <label htmlFor="ai-follow-up" className="sr-only">继续追问</label>
-                <span className="raw-sticker absolute -top-2 left-3 bg-marker-yellow px-1.5 py-0.5 text-[9px] font-black"
-                      aria-hidden="true">
+                <span className="raw-sticker absolute -top-2 left-3 bg-marker-yellow px-1.5 py-0.5 text-[9px] font-black" aria-hidden="true">
                     PROMPT /
                 </span>
                 <Textarea
@@ -210,8 +212,7 @@ function AiPanel() {
                             )}
                             <ChevronDown className="size-4 shrink-0 text-ink/65" aria-hidden="true"/>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={8}
-                                             className={cn(modelMenuPopupClass, "w-max max-w-[calc(100vw-2rem)]")}>
+                        <DropdownMenuContent align="end" sideOffset={8} className={cn(modelMenuPopupClass, "w-max max-w-[calc(100vw-2rem)]")}>
                             {modelProviders.map(provider => (
                                 <DropdownMenuGroup key={provider.providerCode}>
                                     <DropdownMenuLabel
@@ -284,8 +285,7 @@ function AiPanel() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Select items={chatModeItems} value={chatMode}
-                            onValueChange={(value) => value && setChatMode(value)}>
+                    <Select items={chatModeItems} value={chatMode} onValueChange={(value) => value && setChatMode(value)}>
                         <SelectTrigger aria-label="选择对话模式"
                                        className="rotate-[0.35deg] rounded-none border-2 border-ink bg-paper px-3 font-black shadow-[2px_2px_0_var(--kraft)] transition-none data-[size=default]:h-9 data-[size=default]:rounded-none hover:bg-marker-yellow/35">
                             <Brain data-icon="inline-start" className="text-pencil" aria-hidden="true"/>
