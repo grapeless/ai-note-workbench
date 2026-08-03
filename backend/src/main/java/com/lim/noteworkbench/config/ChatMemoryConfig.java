@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.RedisClient;
 
+import java.time.Duration;
+
 @Configuration
 public class ChatMemoryConfig {
     /**
@@ -31,6 +33,7 @@ public class ChatMemoryConfig {
                 .jedisClient(redisClient)
                 .indexName("note-workbench-chat-memory-idx")
                 .keyPrefix("note-workbench:chat-memory:")
+                .timeToLive(Duration.ofDays(7))
                 .initializeSchema(true) //自动创建 Redis Search 索引
                 .build();
     }

@@ -1,5 +1,16 @@
 import {type SubmitEvent, useEffect, useState} from "react"
-import {Brain, Check, ChevronDown, LoaderCircle, MessageSquarePlus, Send, Sparkles} from "lucide-react"
+import {
+    Brain,
+    Check,
+    ChevronDown,
+    History,
+    LoaderCircle,
+    MessageSquare,
+    MessageSquarePlus,
+    Send,
+    Sparkles,
+    Trash2,
+} from "lucide-react"
 import {cn} from "@/lib/utils"
 import {listChatModels, sendChatMessage} from "@/api/workbench/chat"
 import type {ChatMode, ModelProvider} from "@/api/workbench/types"
@@ -26,6 +37,13 @@ interface ChatMessage {
     id: string
     role: 'user' | 'assistant'
     content: string
+}
+
+interface ChatConversation {
+    id: string
+    title: string
+    updatedAt: string
+    messages: ChatMessage[]
 }
 
 type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
@@ -61,6 +79,13 @@ const modelMenuPopupClass =
 const modelMenuItemClass =
     "flex min-w-0 cursor-default items-center gap-2 px-3 py-2 text-sm font-bold outline-none select-none data-highlighted:bg-marker-yellow/60"
 
+const getConversationTime = () => new Date().toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+})
+
 function AiPanel() {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
@@ -70,7 +95,8 @@ function AiPanel() {
     const [modelLoading, setModelLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
+    const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
+    const [conversations, setConversations] = useState<ChatConversation[]>([])
     const selectedCollectionId = useWorkbenchStore(state => state.selectedCollectionId)
 
     //页面加载时加载可用模型列表
@@ -106,6 +132,7 @@ function AiPanel() {
     useEffect(() => {
         setConversationId(crypto.randomUUID())
         setMessages([])
+        setConversations([])
         setError(null)
     }, [selectedCollectionId]);
 
@@ -118,9 +145,17 @@ function AiPanel() {
         //改为禁用按钮而不是抛出异常
         if (!selectedModel || selectedCollectionId === null) return
 
-        setMessages(chatMessages => [
-            ...chatMessages, {id: crypto.randomUUID(), role: 'user', content}
-        ])
+        const nextMessages: ChatMessage[] = [
+            ...messages, {id: crypto.randomUUID(), role: 'user', content}
+        ]
+
+        setMessages(nextMessages)
+        setConversations(conversations => [{
+            id: conversationId,
+            title: messages.find(message => message.role === "user")?.content ?? content,
+            updatedAt: getConversationTime(),
+            messages: nextMessages,
+        }, ...conversations.filter(conversation => conversation.id !== conversationId)])
 
         setDraft('')
         setSending(true)
@@ -135,11 +170,21 @@ function AiPanel() {
             conversationId
         })
             .then(response => {
-                setMessages(chatMessage => [...chatMessage, {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: response.content
-                }])
+                setMessages(chatMessages => {
+                    const nextMessages: ChatMessage[] = [...chatMessages, {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: response.content
+                    }]
+
+                    setConversations(conversations => conversations.map(conversation =>
+                        conversation.id === conversationId
+                            ? {...conversation, updatedAt: getConversationTime(), messages: nextMessages}
+                            : conversation
+                    ))
+
+                    return nextMessages
+                })
             })
             .catch(e => setError(getErrorMessage(e)))
             .finally(() => setSending(false))
@@ -148,27 +193,103 @@ function AiPanel() {
     return (
         <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-paper px-4 pb-5"
                aria-labelledby="ai-title">
-            <div className="flex shrink-0 items-start border-b-2 border-ink pt-5 pb-3">
+            <div className="flex shrink-0 items-center border-b-2 border-ink pt-5 pb-3">
                 <div>
                     <h2 id="ai-title" className="font-display text-2xl font-black">ASK / AI</h2>
                     <p className="mt-1 text-[11px] font-semibold">基于当前资料库回答</p>
                 </div>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={sending}
-                    onClick={() => {
-                        setConversationId(crypto.randomUUID())
-                        setMessages([])
-                        setDraft('')
-                        setError(null)
-                    }}
-                    className="ml-auto rotate-[0.4deg] rounded-none border-2 border-ink bg-paper font-black shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/35"
-                >
-                    <MessageSquarePlus/>
-                    新对话
-                </Button>
+                <div className="ml-auto flex items-center gap-2">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={sending}
+                        onClick={() => {
+                            setConversationId(crypto.randomUUID())
+                            setMessages([])
+                            setDraft('')
+                            setError(null)
+                        }}
+                        className="h-9 rotate-[0.4deg] rounded-none border-2 border-ink bg-paper px-4 font-black shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/35"
+                    >
+                        <MessageSquarePlus className="size-4.5"/>
+                        新对话
+                    </Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            type="button"
+                            disabled={sending}
+                            title="历史对话"
+                            className="flex size-9 rotate-[-0.4deg] items-center justify-center border-2 border-ink bg-paper shadow-[2px_2px_0_var(--kraft)] outline-none transition-none hover:bg-marker-yellow/35 disabled:opacity-50 data-popup-open:bg-marker-yellow/35"
+                        >
+                            <History className="size-4.5"/>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            sideOffset={8}
+                            className="w-80 max-w-[calc(100vw-2rem)] rounded-none border-2 border-ink bg-paper p-2 text-ink shadow-[4px_4px_0_var(--ink)] duration-0 data-open:animate-none data-closed:animate-none"
+                        >
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel
+                                    className="flex items-center justify-between px-2 py-2 font-black text-ink">
+                                    <span>历史对话</span>
+                                    <span className="font-mono text-[10px] text-ink/55">{conversations.length}</span>
+                                </DropdownMenuLabel>
+
+                                {conversations.length === 0 && (
+                                    <DropdownMenuItem disabled
+                                                      className="rounded-none px-2 py-5 text-center text-xs text-ink/45">
+                                        暂无历史对话
+                                    </DropdownMenuItem>
+                                )}
+
+                                {conversations.map(conversation => (
+                                    <DropdownMenuItem
+                                        key={conversation.id}
+                                        title={conversation.title}
+                                        onClick={() => {
+                                            setConversationId(conversation.id)
+                                            setMessages(conversation.messages)
+                                            setDraft('')
+                                            setError(null)
+                                        }}
+                                        className={cn(
+                                            "grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 rounded-none border-b border-ink/15 px-2 py-2.5 data-highlighted:bg-marker-yellow/45",
+                                            conversation.id === conversationId && "bg-marker-yellow/65",
+                                        )}
+                                    >
+                                        <span className="flex size-7 items-center justify-center border border-ink/30 bg-paper">
+                                            <MessageSquare className="size-3.5"/>
+                                        </span>
+                                        <span className="min-w-0">
+                                            <span className="block truncate text-xs font-black">{conversation.title}</span>
+                                            <span className="mt-0.5 block font-mono text-[10px] text-ink/50">
+                                                {conversation.updatedAt}
+                                            </span>
+                                        </span>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuGroup>
+
+                            <DropdownMenuSeparator className="mx-0 my-1 bg-ink/25"/>
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    setConversations([])
+                                    setConversationId(crypto.randomUUID())
+                                    setMessages([])
+                                    setDraft('')
+                                    setError(null)
+                                }}
+                                className="rounded-none px-2 py-2 font-black data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
+                            >
+                                <Trash2/>
+                                清空历史记录
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+
+                    </DropdownMenu>
+                </div>
             </div>
 
             <div className="panel-scroll -mr-4 min-h-0 flex-1 overflow-y-auto pr-4 pt-4">
