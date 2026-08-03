@@ -41,7 +41,6 @@ type WorkBenchState = {
     //
     setActiveView: (view: WorkbenchView) => void
     setSearchQuery: (query: string) => void
-    sendMessage: (content: string) => void
 
     //集合相关
     loadCollections: () => Promise<void>
@@ -97,23 +96,6 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
 
     setActiveView: (activeView) => set({activeView}),
     setSearchQuery: (searchQuery) => set({searchQuery}),
-
-    sendMessage: (content) => set(state => ({
-        messages: [
-            ...state.messages,
-            {
-                id: Date.now(),
-                role: "user",
-                content,
-            },
-            {
-                id: Date.now() + 1,
-                role: "assistant",
-                content:
-                    "这是页面初版的本地演示回复。接入检索接口后，这里会根据当前文档与相关资料生成带引用的答案。",
-            },
-        ]
-    })),
 
     loadCollections: async () => {
         const requestVersion = ++collectionRequestVersion

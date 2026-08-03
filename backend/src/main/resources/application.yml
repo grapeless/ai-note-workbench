@@ -27,3 +27,12 @@ mybatis:
 app:
   storage:
     root: ./storage
+
+logging:
+  level:
+    org:
+      springframework:
+        ai:
+          chat:
+            client:
+              advisor=DEBUG:

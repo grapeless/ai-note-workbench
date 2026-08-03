@@ -5,9 +5,12 @@ import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.ChatModelProperties;
 import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.client.advisor.observation.AdvisorObservationConvention;
 import org.springframework.ai.chat.client.observation.ChatClientObservationConvention;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.model.chat.client.autoconfigure.ChatClientBuilderConfigurer;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -35,6 +38,7 @@ public class ChatClientConfig {
      */
     @Bean
     public ChatClientRegistry chatClientRegistry(
+            ChatMemory chatMemory,
             ChatModelProperties properties,
             ChatClientBuilderConfigurer configurer,
             ObjectProvider<ObservationRegistry> observationRegistry,
@@ -53,6 +57,10 @@ public class ChatClientConfig {
                             chatClientConvention.getIfUnique(),
                             advisorConvention.getIfUnique(),
                             toolCallingAdvisorBuilder.getIfAvailable()))
+                    .defaultAdvisors(
+                            MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                            new SimpleLoggerAdvisor()
+                    )
                     .build();
 
             clients.put(providerCode, chatClient);

@@ -6,10 +6,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record ChatRequestDTO(
+        @NotNull Long collectionId,
         @NotBlank String providerCode,
         @NotBlank String modelCode,
-        @NotNull ChatMode mode,
         @NotBlank @Size(max = 20_000) String message,
-        @NotNull Long collectionId
+        @NotNull ChatMode mode,
+        @NotBlank String conversationId
 ) {
 }

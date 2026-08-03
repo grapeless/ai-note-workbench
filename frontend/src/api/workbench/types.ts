@@ -28,6 +28,7 @@ export interface ChatRequest {
     modelCode: string
     message: string
     mode: ChatMode
+    conversationId: string
 }
 
 export interface ChatResponse {

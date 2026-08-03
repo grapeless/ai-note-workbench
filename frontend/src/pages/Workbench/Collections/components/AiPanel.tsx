@@ -1,5 +1,5 @@
 import {type SubmitEvent, useEffect, useState} from "react"
-import {Brain, Check, ChevronDown, LoaderCircle, Send, Sparkles} from "lucide-react"
+import {Brain, Check, ChevronDown, LoaderCircle, MessageSquarePlus, Send, Sparkles} from "lucide-react"
 import {cn} from "@/lib/utils"
 import {listChatModels, sendChatMessage} from "@/api/workbench/chat"
 import type {ChatMode, ModelProvider} from "@/api/workbench/types"
@@ -70,8 +70,10 @@ function AiPanel() {
     const [modelLoading, setModelLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
     const selectedCollectionId = useWorkbenchStore(state => state.selectedCollectionId)
 
+    //页面加载时加载可用模型列表
     useEffect(() => {
         setModelLoading(true)
         setError(null)
@@ -100,6 +102,14 @@ function AiPanel() {
             .finally(() => setModelLoading(false))
     }, [])
 
+    //切换知识库时开始新会话
+    useEffect(() => {
+        setConversationId(crypto.randomUUID())
+        setMessages([])
+        setError(null)
+    }, [selectedCollectionId]);
+
+    //发送消息
     const submit = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault()
         const content = draft.trim()
@@ -121,7 +131,8 @@ function AiPanel() {
             providerCode: selectedModel.providerCode,
             modelCode: selectedModel.modelCode,
             message: content,
-            mode: chatMode
+            mode: chatMode,
+            conversationId
         })
             .then(response => {
                 setMessages(chatMessage => [...chatMessage, {
@@ -137,16 +148,30 @@ function AiPanel() {
     return (
         <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-paper px-4 pb-5"
                aria-labelledby="ai-title">
-            <div className="panel-scroll -mr-4 min-h-0 flex-1 overflow-y-auto pr-4 pt-5">
-
-                <div className="flex items-start border-b-2 border-ink pb-3">
-                    <div>
-                        <h2 id="ai-title" className="font-display text-2xl font-black">ASK / AI</h2>
-                        <p className="mt-1 text-[11px] font-semibold">基于当前资料库回答</p>
-                    </div>
-                    <Sparkles className="ml-auto size-6" strokeWidth={1.5} aria-hidden="true"/>
+            <div className="flex shrink-0 items-start border-b-2 border-ink pt-5 pb-3">
+                <div>
+                    <h2 id="ai-title" className="font-display text-2xl font-black">ASK / AI</h2>
+                    <p className="mt-1 text-[11px] font-semibold">基于当前资料库回答</p>
                 </div>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={sending}
+                    onClick={() => {
+                        setConversationId(crypto.randomUUID())
+                        setMessages([])
+                        setDraft('')
+                        setError(null)
+                    }}
+                    className="ml-auto rotate-[0.4deg] rounded-none border-2 border-ink bg-paper font-black shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/35"
+                >
+                    <MessageSquarePlus/>
+                    新对话
+                </Button>
+            </div>
 
+            <div className="panel-scroll -mr-4 min-h-0 flex-1 overflow-y-auto pr-4 pt-4">
                 <div className="flex flex-col gap-4" aria-live="polite">
                     {messages.map((message) => (
                         <div key={message.id}>

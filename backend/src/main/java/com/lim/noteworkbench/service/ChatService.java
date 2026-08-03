@@ -12,6 +12,7 @@ import com.lim.noteworkbench.model.vo.ChatResponseVO;
 import com.lim.noteworkbench.model.vo.ModelProviderVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
@@ -60,6 +61,7 @@ public class ChatService {
     private String doPlainChat(ChatClient chatClient, ChatRequestDTO chatRequestDTO) {
         return chatClient.prompt()
                 .user(chatRequestDTO.message())
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatRequestDTO.conversationId()))
                 .options(OpenAiChatOptions.builder()
                         .model(chatRequestDTO.modelCode())
                 )
@@ -86,6 +88,7 @@ public class ChatService {
 
         return chatClient.prompt()
                 .advisors(retrievalAugmentationAdvisor)
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatRequestDTO.conversationId()))
                 .user(chatRequestDTO.message())
                 .options(OpenAiChatOptions.builder()
                         .model(chatRequestDTO.modelCode()))
