@@ -43,6 +43,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <!--流式响应-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
 
         <!--Chat Memory持久化-->
         <dependency>

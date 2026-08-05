@@ -11,18 +11,26 @@ import com.lim.noteworkbench.model.entity.KnowledgeCollection;
 import com.lim.noteworkbench.model.vo.ChatResponseVO;
 import com.lim.noteworkbench.model.vo.ModelProviderVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
@@ -31,7 +39,7 @@ public class ChatService {
     private final ChatModelProperties chatModelProperties;
     private final KnowledgeCollectionService knowledgeCollectionService;
 
-    public ChatResponseVO chat(ChatRequestDTO chatRequestDTO) {
+    public Flux<ChatResponseVO> chat(ChatRequestDTO chatRequestDTO) {
         //1.根据提供商获取对应默认chatClient
         ChatClient chatClient = chatClientRegistry.get(chatRequestDTO.providerCode());
 
@@ -44,32 +52,37 @@ public class ChatService {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的对话模型：" + chatRequestDTO.modelCode());
 
         //3.路由对话模式，并获取回答
-        String content = switch (chatRequestDTO.mode()) {
+        return switch (chatRequestDTO.mode()) {
             case PLAIN -> doPlainChat(chatClient, chatRequestDTO);
             case RAG -> doRagChat(chatClient, chatRequestDTO, false);
             //目前总是执行一次知识库检索
             case AUTO -> doRagChat(chatClient, chatRequestDTO, true);
         };
-
-        //4.返回响应
-        return new ChatResponseVO(
-                chatRequestDTO.providerCode(),
-                chatRequestDTO.modelCode(),
-                content);
     }
 
-    private String doPlainChat(ChatClient chatClient, ChatRequestDTO chatRequestDTO) {
+    private Flux<ChatResponseVO> doPlainChat(ChatClient chatClient, ChatRequestDTO chatRequestDTO) {
         return chatClient.prompt()
                 .user(chatRequestDTO.message())
                 .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatRequestDTO.conversationId()))
                 .options(OpenAiChatOptions.builder()
+                        .extraBody(Map.of("enable_thinking", true))
+                        .reasoningEffort("high")
                         .model(chatRequestDTO.modelCode())
                 )
-                .call()
-                .content();
+                .stream()
+                .chatResponse()
+                .concatMapIterable(ChatResponse::getResults)
+                .concatMapIterable(generation -> {
+                    AssistantMessage assistantMessage = generation.getOutput();
+                    return Stream.of(
+                                    new ChatResponseVO(ChatResponseVO.Type.REASONING_DELTA, (String) assistantMessage.getMetadata().get("reasoningContent")),
+                                    new ChatResponseVO(ChatResponseVO.Type.ANSWER_DELTA, assistantMessage.getText())
+                            ).filter(chatResponseVO -> StringUtils.hasLength(chatResponseVO.content()))
+                            .toList();
+                });
     }
 
-    private String doRagChat(ChatClient chatClient, ChatRequestDTO chatRequestDTO, boolean allowEmptyContext) {
+    private Flux<ChatResponseVO> doRagChat(ChatClient chatClient, ChatRequestDTO chatRequestDTO, boolean allowEmptyContext) {
         KnowledgeCollection collection = knowledgeCollectionService.getById(chatRequestDTO.collectionId());
 
         RetrievalAugmentationAdvisor retrievalAugmentationAdvisor = RetrievalAugmentationAdvisor.builder()
@@ -92,8 +105,17 @@ public class ChatService {
                 .user(chatRequestDTO.message())
                 .options(OpenAiChatOptions.builder()
                         .model(chatRequestDTO.modelCode()))
-                .call()
-                .content();
+                .stream()
+                .chatResponse()
+                .concatMapIterable(ChatResponse::getResults)
+                .concatMapIterable(generation -> {
+                    AssistantMessage assistantMessage = generation.getOutput();
+                    return Stream.of(
+                                    new ChatResponseVO(ChatResponseVO.Type.REASONING_DELTA, (String) assistantMessage.getMetadata().get("reasoningContent")),
+                                    new ChatResponseVO(ChatResponseVO.Type.ANSWER_DELTA, assistantMessage.getText())
+                            ).filter(chatResponseVO -> StringUtils.hasLength(chatResponseVO.content()))
+                            .toList();
+                });
     }
 
     public List<ModelProviderVO> getAvailableModelList() {

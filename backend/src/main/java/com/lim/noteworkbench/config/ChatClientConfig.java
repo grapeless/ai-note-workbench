@@ -18,6 +18,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -76,6 +77,7 @@ public class ChatClientConfig {
                         .baseUrl(providerProperties.getBaseUrl())
                         .apiKey(providerProperties.getApiKey())
                         .model(providerProperties.getDefaultModel())
+                        .timeout(Duration.ofMinutes(5))
                         .build())
                 .build();
     }

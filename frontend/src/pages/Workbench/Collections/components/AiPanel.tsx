@@ -13,49 +13,91 @@ import {
 } from "lucide-react"
 import {cn} from "@/lib/utils"
 import {listChatModels, sendChatMessage} from "@/api/workbench/chat"
-import type {ChatMode, ModelProvider} from "@/api/workbench/types"
+import type {ChatMode, ChatResponse, ModelProvider} from "@/api/workbench/types"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
     DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {Textarea} from "@/components/ui/textarea"
 
-interface ChatMessage {
+interface UserChatMessage {
+    /**
+     * React 渲染和流式更新时用于定位消息
+     */
     id: string
-    role: 'user' | 'assistant'
+    role: 'user'
+    /**
+     * 用户消息内容
+     */
     content: string
 }
 
-interface ChatConversation {
+interface AssistantChatMessage {
+    /**
+     * React 渲染和流式更新时用于定位消息
+     */
     id: string
-    title: string
-    updatedAt: string
-    messages: ChatMessage[]
+    role: 'assistant'
+    /**
+     * 模型的思考内容
+     */
+    reasoningContent: string
+    /**
+     * 思考过程折叠区域是否展开。
+     */
+    reasoningOpen: boolean
+    /**
+     * 这条 AI 消息是否还在接收流式数据。
+     */
+    streaming: boolean
+    /**
+     * 最终回答。
+     */
+    content: string
 }
 
-type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+/**
+ * 一条对话消息
+ */
+type ChatMessage = UserChatMessage | AssistantChatMessage
+
+/**
+ * 历史列表里的一项
+ */
+interface ChatHistory {
+    /**
+     * 由于标识历史列表里的一项，同时也是传给后端的 conversationId
+     */
+    id: string
+    /**
+     * 使用会话第一条用户消息
+     */
+    title: string
+    /**
+     * 是前端生成的展示时间
+     */
+    updatedAt: string
+    /**
+     * 是这个会话的完整前端消息快照
+     */
+    chatMessages: ChatMessage[]
+}
 
 interface SelectedChatModel {
     providerCode: string
     modelCode: string
-    reasoningEffort: ReasoningEffort
 }
 
-const getErrorMessage = (error: unknown) =>
-    error instanceof Error ? error.message : "请求失败，请稍后重试"
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "请求失败，请稍后重试"
 
 const chatModeItems: { label: string; value: ChatMode }[] = [
     {label: "知识库", value: "RAG"},
@@ -63,21 +105,9 @@ const chatModeItems: { label: string; value: ChatMode }[] = [
     {label: "通用", value: "PLAIN"},
 ]
 
-const reasoningEffortLabels: Record<ReasoningEffort, string> = {
-    low: "Low",
-    medium: "Medium",
-    high: "High",
-    xhigh: "Extra",
-    max: "Max",
-}
+const modelMenuPopupClass = "z-50 max-h-(--available-height) min-w-52 overflow-y-auto border-2 border-ink bg-paper py-1 text-ink shadow-[4px_4px_0_var(--ink)] outline-none"
 
-const reasoningEfforts: ReasoningEffort[] = ["low", "medium", "high", "xhigh", "max"]
-
-const modelMenuPopupClass =
-    "z-50 max-h-(--available-height) min-w-52 overflow-y-auto border-2 border-ink bg-paper py-1 text-ink shadow-[4px_4px_0_var(--ink)] outline-none"
-
-const modelMenuItemClass =
-    "flex min-w-0 cursor-default items-center gap-2 px-3 py-2 text-sm font-bold outline-none select-none data-highlighted:bg-marker-yellow/60"
+const modelMenuItemClass = "flex min-w-0 cursor-default items-center gap-2 px-3 py-2 text-sm font-bold outline-none select-none data-highlighted:bg-marker-yellow/60"
 
 const getConversationTime = () => new Date().toLocaleString("zh-CN", {
     month: "2-digit",
@@ -86,17 +116,67 @@ const getConversationTime = () => new Date().toLocaleString("zh-CN", {
     minute: "2-digit",
 })
 
+/**
+ * 追加消息
+ * @param chatMessages 当前消息数组
+ * @param assistantMessageId 正在生成的AI回复的ID
+ * @param chatResponse 后端刚推送的一小段内容
+ */
+const applyChatResponse = (chatMessages: ChatMessage[], assistantMessageId: string, chatResponse: ChatResponse) =>
+    //使用map返回新对象
+    chatMessages.map(chatMessage => {
+        //只对现在正在生成的助手消息追加
+        if (chatMessage.role !== "assistant" || chatMessage.id !== assistantMessageId) return chatMessage
+        //追加到思考内容
+        if (chatResponse.type === "REASONING_DELTA") {
+            return {
+                ...chatMessage,
+                reasoningContent: chatMessage.reasoningContent + chatResponse.content,
+                reasoningOpen: true
+            }
+        }
+        //追加到回复
+        return {
+            ...chatMessage,
+            // 表示收到第一段正式回答时，因为原来的 content 还是空字符串，所以自动收起思考过程；
+            // 之后继续接收正文时，保持用户当前的展开/收起状态。
+            reasoningOpen: chatMessage.content.length === 0 ? false : chatMessage.reasoningOpen,
+            content: chatMessage.content + chatResponse.content
+        }
+    })
+
+/**
+ * 找到对应AI消息，将其streaming改为false。
+ */
+const finishChatMessage = (messages: ChatMessage[], assistantMessageId: string) =>
+    messages.map(message =>
+        message.role === "assistant" && message.id === assistantMessageId
+            ? {...message, streaming: false}
+            : message
+    )
+
+
 function AiPanel() {
-    const [messages, setMessages] = useState<ChatMessage[]>([])
-    const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
-    const [selectedModel, setSelectedModel] = useState<SelectedChatModel | null>(null)
-    const [chatMode, setChatMode] = useState<ChatMode>("RAG")
+    //当前界面展示的会话
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+    //当前会话ID，后端使用其从Redis中找到之前的上下文
+    const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
+    //历史会话列表
+    const [chatHistoryList, setChatHistoryList] = useState<ChatHistory[]>([])
+    //用户输入
     const [draft, setDraft] = useState("")
+    //可用模型列表
+    const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
+    //当前选择的模型
+    const [selectedModel, setSelectedModel] = useState<SelectedChatModel | null>(null)
+    //聊天模式
+    const [chatMode, setChatMode] = useState<ChatMode>("PLAIN")
+    //模型加载状态
     const [modelLoading, setModelLoading] = useState(true)
+    //请求状态
     const [sending, setSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
-    const [conversations, setConversations] = useState<ChatConversation[]>([])
+    //来自工作台Store，代表当前选择的知识库
     const selectedCollectionId = useWorkbenchStore(state => state.selectedCollectionId)
 
     //页面加载时加载可用模型列表
@@ -107,7 +187,7 @@ function AiPanel() {
         listChatModels()
             .then(providers => {
                 const provider = providers[0]
-                const modelCode = provider?.defaultModel
+                const modelCode = provider.defaultModel
 
                 if (!provider || !modelCode) {
                     throw new Error("当前没有可用的 AI 模型")
@@ -121,7 +201,6 @@ function AiPanel() {
                 setSelectedModel({
                     providerCode: provider.providerCode,
                     modelCode,
-                    reasoningEffort: "medium",
                 })
             })
             .catch(e => setError(getErrorMessage(e)))
@@ -131,8 +210,8 @@ function AiPanel() {
     //切换知识库时开始新会话
     useEffect(() => {
         setConversationId(crypto.randomUUID())
-        setMessages([])
-        setConversations([])
+        setChatMessages([])
+        setChatHistoryList([])
         setError(null)
     }, [selectedCollectionId]);
 
@@ -145,19 +224,37 @@ function AiPanel() {
         //改为禁用按钮而不是抛出异常
         if (!selectedModel || selectedCollectionId === null) return
 
+        const assistantMessageId = crypto.randomUUID()
+
+        //生成新的消息数组：旧消息+ 本次用户消息+ 一条空的 AI 消息
         const nextMessages: ChatMessage[] = [
-            ...messages, {id: crypto.randomUUID(), role: 'user', content}
+            ...chatMessages,
+            {
+                id: crypto.randomUUID(),
+                role: "user",
+                content
+            },
+            {
+                id: assistantMessageId,
+                role: "assistant",
+                reasoningContent: "",
+                reasoningOpen: true,
+                streaming: true,
+                content: ""
+            }
         ]
+        setChatMessages(nextMessages)
 
-        setMessages(nextMessages)
-        setConversations(conversations => [{
+        //创建或更新当前会话。会把当前会话放到列表最前面，同时过滤掉旧的同 ID 会话
+        setChatHistoryList(current => [{
             id: conversationId,
-            title: messages.find(message => message.role === "user")?.content ?? content,
+            //第一条用户消息
+            title: chatMessages.find(messages => messages.role === 'user')?.content ?? content,
             updatedAt: getConversationTime(),
-            messages: nextMessages,
-        }, ...conversations.filter(conversation => conversation.id !== conversationId)])
+            chatMessages: nextMessages,
+        }, ...current.filter(conversation => conversation.id !== conversationId)])
 
-        setDraft('')
+        setDraft("")
         setSending(true)
         setError(null)
 
@@ -168,26 +265,32 @@ function AiPanel() {
             message: content,
             mode: chatMode,
             conversationId
+        }, chatResponse => {
+            //每收到一个流式事件就执行一次
+            setChatMessages(current => applyChatResponse(current, assistantMessageId, chatResponse))
+            setChatHistoryList(current => current.map(conversation =>
+                conversation.id === conversationId
+                    ? {
+                        ...conversation,
+                        chatMessages: applyChatResponse(conversation.chatMessages, assistantMessageId, chatResponse)
+                    }
+                    : conversation
+            ))
         })
-            .then(response => {
-                setMessages(chatMessages => {
-                    const nextMessages: ChatMessage[] = [...chatMessages, {
-                        id: crypto.randomUUID(),
-                        role: 'assistant',
-                        content: response.content
-                    }]
-
-                    setConversations(conversations => conversations.map(conversation =>
-                        conversation.id === conversationId
-                            ? {...conversation, updatedAt: getConversationTime(), messages: nextMessages}
-                            : conversation
-                    ))
-
-                    return nextMessages
-                })
+            .catch(error => setError(getErrorMessage(error)))
+            .finally(() => {
+                setChatMessages(current => finishChatMessage(current, assistantMessageId))
+                setChatHistoryList(current => current.map(conversation =>
+                    conversation.id === conversationId
+                        ? {
+                            ...conversation,
+                            updatedAt: getConversationTime(),
+                            chatMessages: finishChatMessage(conversation.chatMessages, assistantMessageId)
+                        }
+                        : conversation
+                ))
+                setSending(false)
             })
-            .catch(e => setError(getErrorMessage(e)))
-            .finally(() => setSending(false))
     }
 
     return (
@@ -206,7 +309,7 @@ function AiPanel() {
                         disabled={sending}
                         onClick={() => {
                             setConversationId(crypto.randomUUID())
-                            setMessages([])
+                            setChatMessages([])
                             setDraft('')
                             setError(null)
                         }}
@@ -234,23 +337,23 @@ function AiPanel() {
                                 <DropdownMenuLabel
                                     className="flex items-center justify-between px-2 py-2 font-black text-ink">
                                     <span>历史对话</span>
-                                    <span className="font-mono text-[10px] text-ink/55">{conversations.length}</span>
+                                    <span className="font-mono text-[10px] text-ink/55">{chatHistoryList.length}</span>
                                 </DropdownMenuLabel>
 
-                                {conversations.length === 0 && (
+                                {chatHistoryList.length === 0 && (
                                     <DropdownMenuItem disabled
                                                       className="rounded-none px-2 py-5 text-center text-xs text-ink/45">
                                         暂无历史对话
                                     </DropdownMenuItem>
                                 )}
 
-                                {conversations.map(conversation => (
+                                {chatHistoryList.map(conversation => (
                                     <DropdownMenuItem
                                         key={conversation.id}
                                         title={conversation.title}
                                         onClick={() => {
                                             setConversationId(conversation.id)
-                                            setMessages(conversation.messages)
+                                            setChatMessages(conversation.chatMessages)
                                             setDraft('')
                                             setError(null)
                                         }}
@@ -275,9 +378,9 @@ function AiPanel() {
                             <DropdownMenuSeparator className="mx-0 my-1 bg-ink/25"/>
                             <DropdownMenuItem
                                 onClick={() => {
-                                    setConversations([])
+                                    setChatHistoryList([])
                                     setConversationId(crypto.randomUUID())
-                                    setMessages([])
+                                    setChatMessages([])
                                     setDraft('')
                                     setError(null)
                                 }}
@@ -294,7 +397,7 @@ function AiPanel() {
 
             <div className="panel-scroll -mr-4 min-h-0 flex-1 overflow-y-auto pr-4 pt-4">
                 <div className="flex flex-col gap-4" aria-live="polite">
-                    {messages.map((message) => (
+                    {chatMessages.map((message) => (
                         <div key={message.id}>
                             <p className="mb-1.5 text-[10px] font-black uppercase">
                                 {message.role === "user" ? "YOU /" : "WORKBENCH /"}
@@ -303,15 +406,54 @@ function AiPanel() {
                                 "border-2 border-ink p-3 text-sm leading-6",
                                 message.role === "assistant" ? "bg-white/30" : "bg-paper",
                             )}>
-                                {message.content}
+                                {message.role === "user" && (
+                                    <div className="whitespace-pre-wrap wrap-break-word">{message.content}</div>
+                                )}
+
+                                {message.role === "assistant" && (
+                                    <>
+                                        {message.reasoningContent && (
+                                            <Collapsible
+                                                open={message.reasoningOpen}
+                                                onOpenChange={reasoningOpen => setChatMessages(current =>
+                                                    current.map(chatMessage =>
+                                                        chatMessage.role === "assistant" && chatMessage.id === message.id
+                                                            ? {...chatMessage, reasoningOpen}
+                                                            : chatMessage
+                                                    )
+                                                )}
+                                                className="mb-3 border border-ink/35 bg-marker-blue/8"
+                                            >
+                                                <CollapsibleTrigger
+                                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-black hover:bg-marker-blue/10"
+                                                >
+                                                    <Brain className="size-3.5"/>
+                                                    <span>{message.streaming && !message.content ? "正在思考" : "思考过程"}</span>
+                                                    <ChevronDown className={cn(
+                                                        "ml-auto size-3.5 transition-transform",
+                                                        message.reasoningOpen && "rotate-180",
+                                                    )}/>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent>
+                                                    <div className="whitespace-pre-wrap wrap-break-word border-t border-dashed border-ink/25 px-3 py-2 text-xs leading-5 text-ink/65">
+                                                        {message.reasoningContent}
+                                                    </div>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        )}
+
+                                        {message.content && (
+                                            <div className="whitespace-pre-wrap wrap-break-word">{message.content}</div>
+                                        )}
+
+                                        {message.streaming && !message.reasoningContent && !message.content && (
+                                            <span className="shimmer font-semibold">正在思考...</span>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}
-                    {sending && (
-                        <p className={'text-sm font-semibold'} role={"status"}>
-                            <span className={'shimmer'}>正在思考...</span>
-                        </p>
-                    )}
                     {error && (
                         <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
                     )}
@@ -343,19 +485,12 @@ function AiPanel() {
                         <DropdownMenuTrigger
                             type="button"
                             disabled={modelLoading || !modelProviders.some(provider => provider.models.length > 0)}
-                            aria-label="选择 AI 模型和思考等级"
-                            title={selectedModel
-                                ? `${selectedModel.modelCode} ${reasoningEffortLabels[selectedModel.reasoningEffort]}`
-                                : undefined}
+                            aria-label="选择 AI 模型"
+                            title={selectedModel?.modelCode}
                             className="flex h-9 max-w-72 min-w-0 rotate-[-0.4deg] items-center gap-1.5 border-2 border-ink bg-paper px-3 font-mono text-sm font-bold shadow-[2px_2px_0_var(--kraft)] outline-none transition-none hover:bg-marker-yellow/35 focus-visible:ring-3 focus-visible:ring-marker-blue/35 disabled:cursor-not-allowed disabled:opacity-50 data-popup-open:bg-marker-yellow/35"
                         >
                             <Sparkles className="size-4 shrink-0 text-marker-blue" aria-hidden="true"/>
                             <span className="min-w-0 truncate">{selectedModel?.modelCode ?? "选择模型"}</span>
-                            {selectedModel && (
-                                <span className="shrink-0 font-sans text-xs font-semibold text-ink/55">
-                                    {reasoningEffortLabels[selectedModel.reasoningEffort]}
-                                </span>
-                            )}
                             <ChevronDown className="size-4 shrink-0 text-ink/65" aria-hidden="true"/>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" sideOffset={8} className={cn(modelMenuPopupClass, "w-max max-w-[calc(100vw-2rem)]")}>
@@ -376,7 +511,6 @@ function AiPanel() {
                                                 onClick={() => setSelectedModel({
                                                     providerCode: provider.providerCode,
                                                     modelCode: model.code,
-                                                    reasoningEffort: selectedModel?.reasoningEffort ?? "medium",
                                                 })}
                                                 className={modelMenuItemClass}
                                             >
@@ -391,43 +525,6 @@ function AiPanel() {
                                 </DropdownMenuGroup>
                             ))}
 
-                            <DropdownMenuSeparator className="mx-2 my-1 h-px bg-ink/30"/>
-
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger
-                                    openOnHover
-                                    className={cn(modelMenuItemClass, "justify-between data-popup-open:bg-marker-yellow/60")}
-                                >
-                                    <span>思考等级</span>
-                                    <span className="ml-5 text-ink/60">
-                                        {selectedModel && reasoningEffortLabels[selectedModel.reasoningEffort]}
-                                    </span>
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent sideOffset={6}
-                                                        className={cn(modelMenuPopupClass, "min-w-40")}>
-                                    <DropdownMenuRadioGroup
-                                        value={selectedModel?.reasoningEffort}
-                                        onValueChange={(value: ReasoningEffort) => setSelectedModel(model =>
-                                            model ? {...model, reasoningEffort: value} : model
-                                        )}
-                                    >
-                                        <DropdownMenuLabel
-                                            className="px-3 py-1 text-[10px] font-black tracking-wide text-ink/60">
-                                            THINKING /
-                                        </DropdownMenuLabel>
-                                        {reasoningEfforts.map(effort => (
-                                            <DropdownMenuRadioItem
-                                                key={effort}
-                                                value={effort}
-                                                closeOnClick
-                                                className={cn(modelMenuItemClass, "pr-8")}
-                                            >
-                                                {reasoningEffortLabels[effort]}
-                                            </DropdownMenuRadioItem>
-                                        ))}
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuSubContent>
-                            </DropdownMenuSub>
                         </DropdownMenuContent>
                     </DropdownMenu>
 

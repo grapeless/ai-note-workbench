@@ -149,3 +149,49 @@ export function upload<T = unknown>(
         body: formData
     })
 }
+
+/**
+ * 发送 POST 请求并逐条读取服务端 SSE 数据
+ */
+export async function postStream<T>(
+    path: string,
+    data: unknown,
+    onMessage: (message: T) => void,
+    options: Omit<RequestInit, 'method' | 'body'> = {}
+): Promise<void> {
+    const headers = new Headers(options.headers)
+
+    headers.set('Content-Type', 'application/json')
+    headers.set('Accept', 'text/event-stream')
+
+    const response = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data)
+    })
+
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+        const {value, done} = await reader.read()
+
+        if (done) break
+
+        buffer += decoder.decode(value, {stream: true})
+
+        const frames = buffer.split(/\r?\n\r?\n/)
+        buffer = frames.pop() ?? ''
+
+        frames.forEach(frame => {
+            onMessage(JSON.parse(
+                frame.split(/\r?\n/)
+                    .filter(line => line.startsWith('data:'))
+                    .map(line => line.slice(5).trimStart())
+                    .join('\n')
+            ) as T)
+        })
+    }
+}

@@ -1,8 +1,11 @@
 package com.lim.noteworkbench.model.vo;
 
 public record ChatResponseVO(
-        String providerCode,
-        String modelCode,
+        Type type,
         String content
 ) {
+    public enum Type {
+        REASONING_DELTA,
+        ANSWER_DELTA
+    }
 }

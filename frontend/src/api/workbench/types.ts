@@ -32,8 +32,7 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
-    providerCode: string
-    modelCode: string
+    type: 'REASONING_DELTA' | 'ANSWER_DELTA'
     content: string
 }
 
