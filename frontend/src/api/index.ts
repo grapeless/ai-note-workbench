@@ -47,14 +47,10 @@ async function request<T = unknown>(
     return result.data
 }
 
-/**
- * GET 请求
- */
-export function get<T = unknown>(
-    path: string,
-    params: Record<string, string | number | boolean | null | undefined> = {},
-    options: Omit<RequestInit, 'method' | 'body'> = {}
-): Promise<T> {
+type RequestParams = Record<string, string | number | boolean | null | undefined>
+type JsonRequestOptions = Omit<RequestInit, 'method' | 'body'>
+
+function appendSearchParams(path: string, params: RequestParams): string {
     const searchParams = new URLSearchParams()
 
     Object.entries(params).forEach(([key, value]) => {
@@ -65,18 +61,24 @@ export function get<T = unknown>(
 
     const query = searchParams.toString()
 
-    // 判断原路径中是否已经存在查询参数：已经有?，说明后面追加参数时要用& ：没有?，说明这是第一个查询参数，要用?
-    const separator = path.includes('?') ? '&' : '?'
-    // 如果 query 有内容，就把查询参数拼接到 path 后面；如果 query 为空，就直接使用原来的 path
-    const requestPath = query ? `${path}${separator}${query}` : path
+    return query ? `${path}${path.includes('?') ? '&' : '?'}${query}` : path
+}
+
+/**
+ * GET 请求
+ */
+export function get<T = unknown>(
+    path: string,
+    params: RequestParams = {},
+    options: Omit<RequestInit, 'method' | 'body'> = {}
+): Promise<T> {
+    const requestPath = appendSearchParams(path, params)
 
     return request<T>(requestPath, {
         ...options,
         method: 'GET'
     })
 }
-
-type JsonRequestOptions = Omit<RequestInit, 'method' | 'body'>
 
 /**
  * POST 请求
@@ -105,17 +107,20 @@ export function put<T = unknown>(
  */
 export function remove<T = unknown>(
     path: string,
-    data?: unknown,
-    options: JsonRequestOptions = {}
+    params: RequestParams = {},
+    options: Omit<RequestInit, 'method' | 'body'> = {}
 ): Promise<T> {
-    return jsonRequest<T>('DELETE', path, data, options)
+    return request<T>(appendSearchParams(path, params), {
+        ...options,
+        method: 'DELETE'
+    })
 }
 
 /**
  * 发送 JSON 请求
  */
 function jsonRequest<T = unknown>(
-    method: 'POST' | 'PUT' | 'DELETE',
+    method: 'POST' | 'PUT',
     path: string,
     data?: unknown,  //更安全的any，不能直接操作该类型的值
     options: JsonRequestOptions = {}
@@ -170,6 +175,11 @@ export async function postStream<T>(
         headers,
         body: JSON.stringify(data)
     })
+
+    if (!response.ok) {
+        const result: Result<unknown> = await response.json()
+        throw new Error(`${result.code}:${result.message}`)
+    }
 
     const reader = response.body!.getReader()
     const decoder = new TextDecoder()

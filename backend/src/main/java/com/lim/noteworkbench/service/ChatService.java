@@ -28,6 +28,7 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -38,6 +39,7 @@ public class ChatService {
     private final VectorStoreRegistry vectorStoreRegistry;
     private final ChatModelProperties chatModelProperties;
     private final KnowledgeCollectionService knowledgeCollectionService;
+    private final ChatHistoryService chatHistoryService;
 
     public Flux<ChatResponseVO> chat(ChatRequestDTO chatRequestDTO) {
         //1.根据提供商获取对应默认chatClient
@@ -52,12 +54,30 @@ public class ChatService {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的对话模型：" + chatRequestDTO.modelCode());
 
         //3.路由对话模式，并获取回答
-        return switch (chatRequestDTO.mode()) {
+        Flux<ChatResponseVO> chatResponseFlux = switch (chatRequestDTO.mode()) {
             case PLAIN -> doPlainChat(chatClient, chatRequestDTO);
             case RAG -> doRagChat(chatClient, chatRequestDTO, false);
             //目前总是执行一次知识库检索
             case AUTO -> doRagChat(chatClient, chatRequestDTO, true);
         };
+
+        //4.追加一段对流中消息的持久化操作
+        UUID assistantMessageId = chatHistoryService.startTurn(chatRequestDTO);
+        StringBuilder reasoningContent = new StringBuilder();
+        StringBuilder content = new StringBuilder();
+        return chatResponseFlux.doOnNext(chatResponseVO -> {
+                    if (chatResponseVO.type() == ChatResponseVO.Type.REASONING_DELTA) {
+                        reasoningContent.append(chatResponseVO.content());
+                    } else {
+                        content.append(chatResponseVO.content());
+                    }
+                })
+                .doOnComplete(() -> chatHistoryService.completeTurn(chatRequestDTO.conversationId(),
+                        assistantMessageId, reasoningContent.toString(), content.toString()))
+                .doOnError(ignored -> chatHistoryService.failTurn(chatRequestDTO.conversationId(),
+                        assistantMessageId, reasoningContent.toString(), content.toString()))
+                .doOnCancel(() -> chatHistoryService.failTurn(chatRequestDTO.conversationId(),
+                        assistantMessageId, reasoningContent.toString(), content.toString()));
     }
 
     private Flux<ChatResponseVO> doPlainChat(ChatClient chatClient, ChatRequestDTO chatRequestDTO) {

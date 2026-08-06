@@ -5,15 +5,22 @@ import {
     ChevronDown,
     History,
     LoaderCircle,
-    MessageSquare,
+    MessageCircle,
     MessageSquarePlus,
     Send,
     Sparkles,
     Trash2,
 } from "lucide-react"
 import {cn} from "@/lib/utils"
-import {listChatModels, sendChatMessage} from "@/api/workbench/chat"
-import type {ChatMode, ChatResponse, ModelProvider} from "@/api/workbench/types"
+import {
+    clearChatConversations,
+    deleteChatConversation,
+    listChatConversations,
+    listChatMessages,
+    listChatModels,
+    sendChatMessage,
+} from "@/api/workbench/chat"
+import type {ChatConversation, ChatMode, ChatResponse, HistoryChatMessage, ModelProvider} from "@/api/workbench/types"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
@@ -70,28 +77,6 @@ interface AssistantChatMessage {
  */
 type ChatMessage = UserChatMessage | AssistantChatMessage
 
-/**
- * 历史列表里的一项
- */
-interface ChatHistory {
-    /**
-     * 由于标识历史列表里的一项，同时也是传给后端的 conversationId
-     */
-    id: string
-    /**
-     * 使用会话第一条用户消息
-     */
-    title: string
-    /**
-     * 是前端生成的展示时间
-     */
-    updatedAt: string
-    /**
-     * 是这个会话的完整前端消息快照
-     */
-    chatMessages: ChatMessage[]
-}
-
 interface SelectedChatModel {
     providerCode: string
     modelCode: string
@@ -108,13 +93,6 @@ const chatModeItems: { label: string; value: ChatMode }[] = [
 const modelMenuPopupClass = "z-50 max-h-(--available-height) min-w-52 overflow-y-auto border-2 border-ink bg-paper py-1 text-ink shadow-[4px_4px_0_var(--ink)] outline-none"
 
 const modelMenuItemClass = "flex min-w-0 cursor-default items-center gap-2 px-3 py-2 text-sm font-bold outline-none select-none data-highlighted:bg-marker-yellow/60"
-
-const getConversationTime = () => new Date().toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-})
 
 /**
  * 追加消息
@@ -145,6 +123,24 @@ const applyChatResponse = (chatMessages: ChatMessage[], assistantMessageId: stri
         }
     })
 
+const toChatMessage = (historyChatMessage: HistoryChatMessage): ChatMessage => {
+    if (historyChatMessage.role === "USER") {
+        return {
+            id: historyChatMessage.id,
+            role: "user",
+            content: historyChatMessage.content
+        }
+    }
+    return {
+        id: historyChatMessage.id,
+        role: "assistant",
+        reasoningContent: historyChatMessage.reasoningContent ?? "",
+        reasoningOpen: false,
+        streaming: false,
+        content: historyChatMessage.content
+    }
+}
+
 /**
  * 找到对应AI消息，将其streaming改为false。
  */
@@ -162,7 +158,7 @@ function AiPanel() {
     //当前会话ID，后端使用其从Redis中找到之前的上下文
     const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
     //历史会话列表
-    const [chatHistoryList, setChatHistoryList] = useState<ChatHistory[]>([])
+    const [chatHistoryList, setChatHistoryList] = useState<ChatConversation[]>([])
     //用户输入
     const [draft, setDraft] = useState("")
     //可用模型列表
@@ -175,6 +171,7 @@ function AiPanel() {
     const [modelLoading, setModelLoading] = useState(true)
     //请求状态
     const [sending, setSending] = useState(false)
+    const [messagesLoading, setMessagesLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     //来自工作台Store，代表当前选择的知识库
     const selectedCollectionId = useWorkbenchStore(state => state.selectedCollectionId)
@@ -213,13 +210,18 @@ function AiPanel() {
         setChatMessages([])
         setChatHistoryList([])
         setError(null)
+        if (selectedCollectionId === null) return
+
+        listChatConversations(selectedCollectionId)
+            .then(setChatHistoryList)
+            .catch(error => setError(getErrorMessage(error)))
     }, [selectedCollectionId]);
 
     //发送消息
     const submit = (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault()
         const content = draft.trim()
-        if (!content || sending) return
+        if (!content || sending || messagesLoading) return
 
         //改为禁用按钮而不是抛出异常
         if (!selectedModel || selectedCollectionId === null) return
@@ -245,15 +247,6 @@ function AiPanel() {
         ]
         setChatMessages(nextMessages)
 
-        //创建或更新当前会话。会把当前会话放到列表最前面，同时过滤掉旧的同 ID 会话
-        setChatHistoryList(current => [{
-            id: conversationId,
-            //第一条用户消息
-            title: chatMessages.find(messages => messages.role === 'user')?.content ?? content,
-            updatedAt: getConversationTime(),
-            chatMessages: nextMessages,
-        }, ...current.filter(conversation => conversation.id !== conversationId)])
-
         setDraft("")
         setSending(true)
         setError(null)
@@ -268,28 +261,14 @@ function AiPanel() {
         }, chatResponse => {
             //每收到一个流式事件就执行一次
             setChatMessages(current => applyChatResponse(current, assistantMessageId, chatResponse))
-            setChatHistoryList(current => current.map(conversation =>
-                conversation.id === conversationId
-                    ? {
-                        ...conversation,
-                        chatMessages: applyChatResponse(conversation.chatMessages, assistantMessageId, chatResponse)
-                    }
-                    : conversation
-            ))
         })
             .catch(error => setError(getErrorMessage(error)))
             .finally(() => {
                 setChatMessages(current => finishChatMessage(current, assistantMessageId))
-                setChatHistoryList(current => current.map(conversation =>
-                    conversation.id === conversationId
-                        ? {
-                            ...conversation,
-                            updatedAt: getConversationTime(),
-                            chatMessages: finishChatMessage(conversation.chatMessages, assistantMessageId)
-                        }
-                        : conversation
-                ))
                 setSending(false)
+                listChatConversations(selectedCollectionId)
+                    .then(setChatHistoryList)
+                    .catch(error => setError(getErrorMessage(error)))
             })
     }
 
@@ -306,7 +285,7 @@ function AiPanel() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={sending}
+                        disabled={sending || messagesLoading}
                         onClick={() => {
                             setConversationId(crypto.randomUUID())
                             setChatMessages([])
@@ -322,7 +301,7 @@ function AiPanel() {
                     <DropdownMenu>
                         <DropdownMenuTrigger
                             type="button"
-                            disabled={sending}
+                            disabled={sending || messagesLoading}
                             title="历史对话"
                             className="flex size-9 rotate-[-0.4deg] items-center justify-center border-2 border-ink bg-paper shadow-[2px_2px_0_var(--kraft)] outline-none transition-none hover:bg-marker-yellow/35 disabled:opacity-50 data-popup-open:bg-marker-yellow/35"
                         >
@@ -353,24 +332,58 @@ function AiPanel() {
                                         title={conversation.title}
                                         onClick={() => {
                                             setConversationId(conversation.id)
-                                            setChatMessages(conversation.chatMessages)
-                                            setDraft('')
+                                            setChatMessages([])
+                                            setDraft("")
                                             setError(null)
+                                            setMessagesLoading(true)
+
+                                            listChatMessages(conversation.id)
+                                                .then(messages => setChatMessages(messages.map(toChatMessage)))
+                                                .catch(error => setError(getErrorMessage(error)))
+                                                .finally(() => setMessagesLoading(false))
                                         }}
                                         className={cn(
-                                            "grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 rounded-none border-b border-ink/15 px-2 py-2.5 data-highlighted:bg-marker-yellow/45",
+                                            "grid grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] gap-2 rounded-none border-b border-ink/15 px-2 py-2.5 data-highlighted:bg-marker-yellow/45",
                                             conversation.id === conversationId && "bg-marker-yellow/65",
                                         )}
                                     >
                                         <span className="flex size-7 items-center justify-center border border-ink/30 bg-paper">
-                                            <MessageSquare className="size-3.5"/>
+                                            <MessageCircle className="size-3.5"/>
                                         </span>
                                         <span className="min-w-0">
                                             <span className="block truncate text-xs font-black">{conversation.title}</span>
                                             <span className="mt-0.5 block font-mono text-[10px] text-ink/50">
-                                                {conversation.updatedAt}
+                                                  {new Date(conversation.updateTime).toLocaleString("zh-CN", {
+                                                      month: "2-digit",
+                                                      day: "2-digit",
+                                                      hour: "2-digit",
+                                                      minute: "2-digit",
+                                                  })}
                                             </span>
                                         </span>
+                                        <button type="button" title="删除会话"
+                                                className="flex size-7 items-center justify-center text-ink/45 hover:bg-destructive/10 hover:text-destructive"
+                                                onClick={event => {
+                                                    event.stopPropagation()
+                                                    setError(null)
+
+                                                    deleteChatConversation(conversation.id)
+                                                        .then(() => {
+                                                            setChatHistoryList(current =>
+                                                                current.filter(item => item.id !== conversation.id)
+                                                            )
+
+                                                            if (conversation.id === conversationId) {
+                                                                setConversationId(crypto.randomUUID())
+                                                                setChatMessages([])
+                                                                setDraft("")
+                                                            }
+                                                        })
+                                                        .catch(error => setError(getErrorMessage(error)))
+                                                }}
+                                        >
+                                            <Trash2 className="size-3.5"/>
+                                        </button>
                                     </DropdownMenuItem>
                                 ))}
                             </DropdownMenuGroup>
@@ -378,11 +391,17 @@ function AiPanel() {
                             <DropdownMenuSeparator className="mx-0 my-1 bg-ink/25"/>
                             <DropdownMenuItem
                                 onClick={() => {
-                                    setChatHistoryList([])
-                                    setConversationId(crypto.randomUUID())
-                                    setChatMessages([])
-                                    setDraft('')
+                                    if (selectedCollectionId === null) return
                                     setError(null)
+
+                                    clearChatConversations(selectedCollectionId)
+                                        .then(() => {
+                                            setChatHistoryList([])
+                                            setConversationId(crypto.randomUUID())
+                                            setChatMessages([])
+                                            setDraft("")
+                                        })
+                                        .catch(error => setError(getErrorMessage(error)))
                                 }}
                                 className="rounded-none px-2 py-2 font-black data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
                             >
@@ -550,7 +569,7 @@ function AiPanel() {
                     <Button
                         type="submit"
                         size="icon-lg"
-                        disabled={!draft.trim() || sending || modelLoading || !selectedModel || selectedCollectionId === null}
+                        disabled={!draft.trim() || sending || messagesLoading || modelLoading || !selectedModel || selectedCollectionId === null}
                         aria-label={sending ? "正在发送" : "发送消息"}
                         className="rounded-none border-2 border-ink bg-marker-yellow text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/80 focus-visible:ring-marker-blue/35 active:translate-y-px active:shadow-none"
                     >

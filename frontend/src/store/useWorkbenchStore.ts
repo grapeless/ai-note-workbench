@@ -11,6 +11,7 @@ type ChatMessage = {
     content: string
 }
 
+//todo 重构一下store，拆分一下
 type WorkBenchState = {
     //===============data==============
     //当前页面

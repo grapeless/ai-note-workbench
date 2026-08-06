@@ -45,3 +45,30 @@ export interface ModelProvider {
     defaultModel: string
     models: ChatModel[]
 }
+
+export interface ChatConversation {
+    id: string
+    collectionId: number
+    title: string
+    createTime: string
+    updateTime: string
+}
+
+export type ChatMessageRole = 'USER' | 'ASSISTANT'
+
+export type ChatMessageStatus = 'GENERATING' | 'COMPLETED' | 'FAILED'
+
+export interface HistoryChatMessage {
+    id: string
+    conversationId: string
+    sequenceId: number
+    role: ChatMessageRole
+    content: string
+    reasoningContent: string | null
+    providerCode: string | null
+    modelCode: string | null
+    mode: ChatMode | null
+    status: ChatMessageStatus
+    createTime: string
+    updateTime: string
+}

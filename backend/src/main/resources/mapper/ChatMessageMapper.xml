@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lim.noteworkbench.mapper.ChatMessageMapper">
+    <resultMap id="ChatMessageResultMap"
+               type="com.lim.noteworkbench.model.entity.ChatMessage">
+        <id property="id" column="id" jdbcType="OTHER"/>
+        <result property="conversationId" column="conversation_id" jdbcType="OTHER"/>
+        <result property="sequenceId" column="sequence_id" jdbcType="BIGINT"/>
+        <result property="role" column="role" jdbcType="VARCHAR"/>
+        <result property="content" column="content" jdbcType="VARCHAR"/>
+        <result property="reasoningContent" column="reasoning_content" jdbcType="VARCHAR"/>
+        <result property="providerCode" column="provider_code" jdbcType="VARCHAR"/>
+        <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
+        <result property="mode" column="mode" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="VARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <insert id="insert"
+            parameterType="com.lim.noteworkbench.model.entity.ChatMessage">
+        INSERT INTO chat_message (
+            id,
+            conversation_id,
+            role,
+            content,
+            reasoning_content,
+            provider_code,
+            model_code,
+            mode,
+            status
+        )
+        VALUES (
+            #{id},
+            #{conversationId},
+            #{role},
+            #{content},
+            #{reasoningContent},
+            #{providerCode},
+            #{modelCode},
+            #{mode},
+            #{status}
+        )
+    </insert>
+
+    <select id="findByConversationId" resultMap="ChatMessageResultMap">
+        SELECT id,
+               conversation_id,
+               sequence_id,
+               role,
+               content,
+               reasoning_content,
+               provider_code,
+               model_code,
+               mode,
+               status,
+               create_time,
+               update_time
+        FROM chat_message
+        WHERE conversation_id = #{conversationId}
+        ORDER BY sequence_id
+    </select>
+
+    <update id="updateGenerationResult"
+            parameterType="com.lim.noteworkbench.model.entity.ChatMessage">
+        UPDATE chat_message
+        SET reasoning_content = #{reasoningContent},
+            content = #{content},
+            status = #{status},
+            update_time = now()
+        WHERE id = #{id}
+    </update>
+</mapper>

@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.RedisClient;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +38,7 @@ public class ChatMemoryConfig {
                         "name", "messageType",
                         "type", "tag"
                 )))
-                .timeToLive(Duration.ofDays(7))
+                //.timeToLive(Duration.ofDays(7)) 不设置 TTL，由持久化会话的删除操作同步清理Redis ChatMemory
                 .initializeSchema(true) //自动创建 Redis Search 索引
                 .build();
     }

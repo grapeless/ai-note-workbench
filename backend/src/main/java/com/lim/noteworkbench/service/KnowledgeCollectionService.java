@@ -18,6 +18,7 @@ import java.util.Objects;
 public class KnowledgeCollectionService {
     private final KnowledgeCollectionMapper knowledgeCollectionMapper;
     private final EmbeddingModelProperties embeddingModelProperties;
+    private final ChatHistoryService chatHistoryService;
 
     @Transactional
     public KnowledgeCollection create(CreateCollectionDTO request) {
@@ -58,7 +59,9 @@ public class KnowledgeCollectionService {
         return knowledgeCollectionMapper.findAll();
     }
 
+    @Transactional
     public void delete(Long id) {
+        chatHistoryService.deleteByCollectionId(id);
         knowledgeCollectionMapper.deleteById(id);
     }
 }
