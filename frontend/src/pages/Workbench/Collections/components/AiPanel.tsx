@@ -1,4 +1,6 @@
-import {type SubmitEvent, useEffect, useState} from "react"
+import {memo, type SubmitEvent, useEffect, useState} from "react"
+import Markdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import {
     Brain,
     Check,
@@ -20,7 +22,7 @@ import {
     listChatModels,
     sendChatMessage,
 } from "@/api/workbench/chat"
-import type {ChatConversation, ChatMode, ChatResponse, HistoryChatMessage, ModelProvider} from "@/api/workbench/types"
+import type {ChatConversation, ChatResponse, HistoryChatMessage, ModelProvider} from "@/api/workbench/types"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
@@ -33,7 +35,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {Textarea} from "@/components/ui/textarea"
 
 interface UserChatMessage {
@@ -83,12 +84,6 @@ interface SelectedChatModel {
 }
 
 const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "请求失败，请稍后重试"
-
-const chatModeItems: { label: string; value: ChatMode }[] = [
-    {label: "知识库", value: "RAG"},
-    {label: "自动", value: "AUTO"},
-    {label: "通用", value: "PLAIN"},
-]
 
 const modelMenuPopupClass = "z-50 max-h-(--available-height) min-w-52 overflow-y-auto border-2 border-ink bg-paper py-1 text-ink shadow-[4px_4px_0_var(--ink)] outline-none"
 
@@ -151,6 +146,14 @@ const finishChatMessage = (messages: ChatMessage[], assistantMessageId: string) 
             : message
     )
 
+const MarkdownContent = memo(({content}: { content: string }) => (
+    <div className="wrap-break-word space-y-3 overflow-x-auto [&_a]:font-bold [&_a]:text-marker-blue [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-marker-blue [&_blockquote]:pl-3 [&_blockquote]:text-ink/70 [&_code]:bg-kraft/30 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:font-display [&_h1]:text-xl [&_h1]:font-black [&_h2]:font-display [&_h2]:text-lg [&_h2]:font-black [&_h3]:font-black [&_hr]:border-ink/35 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-ink/35 [&_pre]:bg-ink [&_pre]:p-3 [&_pre]:text-paper [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-paper [&_strong]:font-black [&_table]:min-w-full [&_table]:border-collapse [&_td]:border [&_td]:border-ink/35 [&_td]:p-2 [&_th]:border [&_th]:border-ink/35 [&_th]:bg-kraft/20 [&_th]:p-2 [&_th]:text-left [&_ul]:list-disc [&_ul]:pl-5">
+        <Markdown remarkPlugins={[remarkGfm]} skipHtml>
+            {content}
+        </Markdown>
+    </div>
+))
+
 
 function AiPanel() {
     //当前界面展示的会话
@@ -165,8 +168,6 @@ function AiPanel() {
     const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
     //当前选择的模型
     const [selectedModel, setSelectedModel] = useState<SelectedChatModel | null>(null)
-    //聊天模式
-    const [chatMode, setChatMode] = useState<ChatMode>("PLAIN")
     //模型加载状态
     const [modelLoading, setModelLoading] = useState(true)
     //请求状态
@@ -256,7 +257,6 @@ function AiPanel() {
             providerCode: selectedModel.providerCode,
             modelCode: selectedModel.modelCode,
             message: content,
-            mode: chatMode,
             conversationId
         }, chatResponse => {
             //每收到一个流式事件就执行一次
@@ -462,7 +462,7 @@ function AiPanel() {
                                         )}
 
                                         {message.content && (
-                                            <div className="whitespace-pre-wrap wrap-break-word">{message.content}</div>
+                                            <MarkdownContent content={message.content}/>
                                         )}
 
                                         {message.streaming && !message.reasoningContent && !message.content && (
@@ -546,25 +546,6 @@ function AiPanel() {
 
                         </DropdownMenuContent>
                     </DropdownMenu>
-
-                    <Select items={chatModeItems} value={chatMode} onValueChange={(value) => value && setChatMode(value)}>
-                        <SelectTrigger aria-label="选择对话模式"
-                                       className="rotate-[0.35deg] rounded-none border-2 border-ink bg-paper px-3 font-black shadow-[2px_2px_0_var(--kraft)] transition-none data-[size=default]:h-9 data-[size=default]:rounded-none hover:bg-marker-yellow/35">
-                            <Brain data-icon="inline-start" className="text-pencil" aria-hidden="true"/>
-                            <SelectValue/>
-                        </SelectTrigger>
-                        <SelectContent alignItemWithTrigger={false} align="end"
-                                       className="rounded-none border-2 border-ink bg-paper shadow-[4px_4px_0_var(--ink)] duration-0 data-open:animate-none data-closed:animate-none">
-                            <SelectGroup>
-                                {chatModeItems.map(item => (
-                                    <SelectItem key={item.value} value={item.value}
-                                                className="rounded-none py-2 font-bold focus:bg-marker-yellow/60">
-                                        {item.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
 
                     <Button
                         type="submit"

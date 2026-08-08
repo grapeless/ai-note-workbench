@@ -1,19 +1,20 @@
 import {useEffect, useRef, useState} from "react"
 import {CheckCircle2, Clock3, Import, LoaderCircle, RotateCcw, XCircle,} from "lucide-react"
 
-import {uploadDocument} from "@/api/workbench/documents"
+import {processDocument, uploadDocument} from "@/api/workbench/documents"
 import type {KnowledgeCollection} from "@/api/workbench/types"
 import {Button} from "@/components/ui/button"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
-type UploadItemStatus = "queued" | "uploading" | "success" | "error"
+type UploadItemStatus = "queued" | "uploading" | "embedding" | "success" | "error"
 
 interface UploadItem {
     id: string
     file: File
     collectionId: number
     collectionName: string
+    documentId: number | null
     status: UploadItemStatus
     errorMessage: string | null
 }
@@ -39,21 +40,27 @@ export function DocumentImport() {
         }
     }, [selectedCollectionId])
 
-    const updateUploadItem = (id: string, updates: Partial<Pick<UploadItem, "status" | "errorMessage">>) => {
+    const updateUploadItem = (
+        id: string,
+        updates: Partial<Pick<UploadItem, "documentId" | "status" | "errorMessage">>,
+    ) => {
         setUploadItems((items) => items.map((item) => item.id === id ? {...item, ...updates} : item))
     }
 
-    const uploadOne = async (item: UploadItem) => {
-        updateUploadItem(item.id, {status: "uploading", errorMessage: null})
+    const importOne = async (item: UploadItem) => {
+        let documentId = item.documentId
 
         try {
-            await uploadDocument(item.collectionId, item.file)
-            updateUploadItem(item.id, {status: "success", errorMessage: null})
-
-            if (useWorkbenchStore.getState().selectedCollectionId === item.collectionId) {
-                await refreshDocuments()
+            if (documentId === null) {
+                updateUploadItem(item.id, {status: "uploading", errorMessage: null})
+                documentId = (await uploadDocument(item.collectionId, item.file)).id
+                updateUploadItem(item.id, {documentId, status: "embedding", errorMessage: null})
+            } else {
+                updateUploadItem(item.id, {status: "embedding", errorMessage: null})
             }
 
+            await processDocument(documentId)
+            updateUploadItem(item.id, {status: "success", errorMessage: null})
             return true
         } catch (error) {
             updateUploadItem(item.id, {
@@ -61,6 +68,10 @@ export function DocumentImport() {
                 errorMessage: getUploadErrorMessage(error),
             })
             return false
+        } finally {
+            if (documentId !== null && useWorkbenchStore.getState().selectedCollectionId === item.collectionId) {
+                await refreshDocuments()
+            }
         }
     }
 
@@ -72,6 +83,7 @@ export function DocumentImport() {
             file,
             collectionId: collection.id,
             collectionName: collection.name,
+            documentId: null,
             status: "queued",
             errorMessage: null,
         }))
@@ -79,31 +91,31 @@ export function DocumentImport() {
         setUploadItems((currentItems) => [...currentItems, ...items])
         uploadingRef.current = true
         setUploading(true)
-        setImportStatus(`开始向「${collection.name}」上传 ${items.length} 个文件。`)
+        setImportStatus(`开始向「${collection.name}」导入并嵌入 ${items.length} 个文件。`)
 
         let successCount = 0
 
         for (const item of items) {
-            if (await uploadOne(item)) successCount += 1
+            if (await importOne(item)) successCount += 1
         }
 
         uploadingRef.current = false
         setUploading(false)
         setImportStatus(
             successCount === items.length
-                ? `${items.length} 个文件已全部上传成功。`
-                : `${successCount} 个文件上传成功，${items.length - successCount} 个文件上传失败。`,
+                ? `${items.length} 个文件已全部导入并完成嵌入。`
+                : `${successCount} 个文件嵌入成功，${items.length - successCount} 个文件处理失败。`,
         )
     }
 
-    const retryUpload = async (item: UploadItem) => {
+    const retryImport = async (item: UploadItem) => {
         if (uploadingRef.current) return
 
         uploadingRef.current = true
         setUploading(true)
-        setImportStatus(`正在重试上传「${item.file.name}」。`)
+        setImportStatus(`正在重试${item.documentId === null ? "上传并嵌入" : "嵌入"}「${item.file.name}」。`)
 
-        const succeeded = await uploadOne(item)
+        const succeeded = await importOne(item)
 
         uploadingRef.current = false
         setUploading(false)
@@ -136,14 +148,14 @@ export function DocumentImport() {
                 onClick={() => fileInputRef.current?.click()}
             >
                 <Import data-icon="inline-start" aria-hidden="true"/>
-                导入文档
+                导入并嵌入
                 <span className="ml-auto text-[10px] font-bold">PDF / MD / TXT</span>
             </Button>
             <p id="document-upload-hint" className="mt-2 text-[10px] font-semibold leading-4 text-ink/65">
                 {uploading
-                    ? "正在逐个上传，请等待当前队列完成。"
+                    ? "正在逐个上传并嵌入，请等待当前队列完成。"
                     : selectedCollection
-                        ? `导入到「${selectedCollection.name}」`
+                        ? `导入到「${selectedCollection.name}」并生成向量索引`
                         : "请先选择一个集合。"}
             </p>
             <p className="sr-only" aria-live="polite" aria-atomic="true">
@@ -154,7 +166,7 @@ export function DocumentImport() {
                 <UploadQueue
                     items={uploadItems}
                     uploading={uploading}
-                    onRetry={(item) => void retryUpload(item)}
+                    onRetry={(item) => void retryImport(item)}
                 />
             )}
         </section>
@@ -180,7 +192,7 @@ function UploadQueue({
             aria-busy={uploading}
         >
             <div className="flex min-h-9 items-center border-b border-ink/55 px-3">
-                <h2 id="upload-queue-title" className="text-[10px] font-black">UPLOADS / 上传进度</h2>
+                <h2 id="upload-queue-title" className="text-[10px] font-black">IMPORT / 导入与嵌入</h2>
                 <span className="ml-auto text-[10px] font-black tabular-nums">{finishedCount}/{items.length}</span>
             </div>
             <ul>
@@ -233,7 +245,7 @@ function UploadQueueItem({
                     size="xs"
                     disabled={retryDisabled}
                     onClick={onRetry}
-                    aria-label={`重试上传 ${item.file.name}`}
+                    aria-label={`重试${item.documentId === null ? "上传并嵌入" : "嵌入"} ${item.file.name}`}
                     className="mt-2 rounded-none border-2 border-ink bg-paper font-black"
                 >
                     <RotateCcw data-icon="inline-start" aria-hidden="true"/>
@@ -245,7 +257,7 @@ function UploadQueueItem({
 }
 
 function UploadStatusIcon({status}: { status: UploadItemStatus }) {
-    if (status === "uploading") {
+    if (status === "uploading" || status === "embedding") {
         return <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true"/>
     }
     if (status === "success") {
@@ -263,6 +275,8 @@ function getUploadStatusLabel(status: UploadItemStatus) {
             return "等待"
         case "uploading":
             return "上传中"
+        case "embedding":
+            return "嵌入中"
         case "success":
             return "成功"
         case "error":
@@ -271,7 +285,7 @@ function getUploadStatusLabel(status: UploadItemStatus) {
 }
 
 function getUploadErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : "上传失败，请重试"
+    return error instanceof Error ? error.message : "导入失败，请重试"
 }
 
 function formatFileSize(bytes: number) {

@@ -68,7 +68,7 @@ function DocumentMetadata({
         <>
             <div className="tape-strip mx-auto mb-1 h-5 w-24" aria-hidden="true"/>
             <p className="section-index">DOCUMENT / 文档详情</p>
-            <h1 className="mt-3 break-words font-display text-2xl leading-tight font-black tracking-tight sm:text-3xl">
+            <h1 className="mt-3 wrap-break-word font-display text-2xl leading-tight font-black tracking-tight sm:text-3xl">
                 {document.title}
             </h1>
 

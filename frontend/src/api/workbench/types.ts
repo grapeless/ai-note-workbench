@@ -20,14 +20,11 @@ export interface KnowledgeDocument {
     updateTime: string
 }
 
-export type ChatMode = 'PLAIN' | 'RAG' | 'AUTO'
-
 export interface ChatRequest {
     collectionId: number
     providerCode: string
     modelCode: string
     message: string
-    mode: ChatMode
     conversationId: string
 }
 
@@ -67,7 +64,6 @@ export interface HistoryChatMessage {
     reasoningContent: string | null
     providerCode: string | null
     modelCode: string | null
-    mode: ChatMode | null
     status: ChatMessageStatus
     createTime: string
     updateTime: string
