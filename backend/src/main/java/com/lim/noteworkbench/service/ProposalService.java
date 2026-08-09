@@ -33,6 +33,7 @@ public class ProposalService {
     public ProposalDTO update(
             Long collectionId,
             UUID conversationId,
+            UUID assistantMessageId,
             Long knowledgeDocumentId,
             String proposedContent
     ) {
@@ -45,6 +46,7 @@ public class ProposalService {
         ProposalDTO proposalDTO = ProposalDTO.builder()
                 .id(UUID.randomUUID())
                 .conversationId(conversationId)
+                .assistantMessageId(assistantMessageId)
                 .knowledgeCollectionId(collectionId)
                 .knowledgeDocumentId(knowledgeDocumentId)
                 .operation(ProposalDTO.Operation.UPDATE)

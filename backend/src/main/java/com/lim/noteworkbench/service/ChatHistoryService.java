@@ -53,7 +53,7 @@ public class ChatHistoryService {
                 .build());
 
         //插入AI占位消息
-        UUID assistantMessageId = UUID.randomUUID();
+        UUID assistantMessageId = chatRequestDTO.assistantMessageId();
         chatMessageMapper.insert(ChatMessage.builder()
                 .id(assistantMessageId)
                 .conversationId(conversationId)

@@ -313,7 +313,8 @@ function AiPanel() {
             providerCode: selectedModel.providerCode,
             modelCode: selectedModel.modelCode,
             message: content,
-            conversationId
+            conversationId,
+            assistantMessageId
         }, chatResponse => {
             //每收到一个流式事件就执行一次
             setChatMessages(current => applyChatResponse(current, assistantMessageId, chatResponse))
@@ -528,20 +529,24 @@ function AiPanel() {
                                     </>
                                 )}
                             </div>
+
+                            {message.role === "assistant" && proposals
+                                .filter(proposal => proposal.assistantMessageId === message.id)
+                                .map(proposal => (
+                                    <div key={proposal.proposalId} className="mt-3">
+                                        <ProposalCard
+                                            proposal={proposal}
+                                            applying={applyingProposalId === proposal.proposalId}
+                                            disabled={applyingProposalId !== null}
+                                            onApply={() => applyDocumentProposal(proposal)}
+                                        />
+                                    </div>
+                                ))}
                         </div>
                     ))}
                     {proposalsLoading && (
                         <p className="font-mono text-[10px] font-bold text-ink/55">正在检查文档变更…</p>
                     )}
-                    {proposals.map(proposal => (
-                        <ProposalCard
-                            key={proposal.proposalId}
-                            proposal={proposal}
-                            applying={applyingProposalId === proposal.proposalId}
-                            disabled={applyingProposalId !== null}
-                            onApply={() => applyDocumentProposal(proposal)}
-                        />
-                    ))}
                     {error && (
                         <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
                     )}

@@ -26,6 +26,7 @@ export interface ChatRequest {
     modelCode: string
     message: string
     conversationId: string
+    assistantMessageId: string
 }
 
 export interface ChatResponse {
@@ -35,6 +36,7 @@ export interface ChatResponse {
 
 export interface Proposal {
     proposalId: string
+    assistantMessageId: string
     operation: 'CREATE' | 'UPDATE'
     knowledgeDocumentId: number | null
     title: string

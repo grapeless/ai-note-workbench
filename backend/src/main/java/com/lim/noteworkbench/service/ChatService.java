@@ -55,7 +55,8 @@ public class ChatService {
                 .tools(researchTools, writingTools)
                 .toolContext(Map.of(
                         AgentToolContextKey.COLLECTION_ID, chatRequestDTO.collectionId(),
-                        AgentToolContextKey.CONVERSATION_ID, chatRequestDTO.conversationId()
+                        AgentToolContextKey.CONVERSATION_ID, chatRequestDTO.conversationId(),
+                        AgentToolContextKey.ASSISTANT_MESSAGE_ID, chatRequestDTO.assistantMessageId()
                 ))
                 .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatRequestDTO.conversationId()))
                 .options(OpenAiChatOptions.builder()

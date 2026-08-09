@@ -48,6 +48,7 @@ public class WritingTools {
         ProposalDTO proposalDTO = proposalService.update(
                         getCollectionId(toolContext),
                         getConversationId(toolContext),
+                        getAssistantMessageId(toolContext),
                         documentId,
                         proposedContent);
         return ProposalVO.from(proposalDTO);
@@ -59,6 +60,10 @@ public class WritingTools {
 
     private UUID getConversationId(ToolContext toolContext) {
         return (UUID) toolContext.getContext().get(AgentToolContextKey.CONVERSATION_ID);
+    }
+
+    private UUID getAssistantMessageId(ToolContext toolContext) {
+        return (UUID) toolContext.getContext().get(AgentToolContextKey.ASSISTANT_MESSAGE_ID);
     }
 
 }

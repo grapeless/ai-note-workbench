@@ -13,6 +13,7 @@ import java.util.UUID;
  *
  * @param id                    提案 ID，用于查询和应用提案
  * @param conversationId        提案所属的会话 ID，用于限制确认范围
+ * @param assistantMessageId    生成该提案的助手消息 ID，用于确定展示位置
  * @param knowledgeCollectionId 提案所属的知识库 ID
  * @param knowledgeDocumentId   目标文档 ID；创建文档时为空
  * @param operation             变更操作类型
@@ -28,6 +29,7 @@ import java.util.UUID;
 public record ProposalDTO(
         UUID id,
         UUID conversationId,
+        UUID assistantMessageId,
         Long knowledgeCollectionId,
         Long knowledgeDocumentId,
         Operation operation,

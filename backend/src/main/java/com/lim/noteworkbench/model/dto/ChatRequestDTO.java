@@ -22,6 +22,9 @@ public record ChatRequestDTO(
         @NotBlank @Size(max = 20_000) String message,
 
         @Schema(description = "会话 ID")
-        @NotNull UUID conversationId
+        @NotNull UUID conversationId,
+
+        @Schema(description = "本轮助手消息 ID")
+        @NotNull UUID assistantMessageId
 ) {
 }

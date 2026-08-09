@@ -8,6 +8,7 @@ import java.util.UUID;
 @Builder
 public record ProposalVO(
         UUID proposalId,
+        UUID assistantMessageId,
         String operation,
         Long knowledgeDocumentId,
         String title,
@@ -18,6 +19,7 @@ public record ProposalVO(
     public static ProposalVO from(ProposalDTO proposalDTO) {
         return ProposalVO.builder()
                 .proposalId(proposalDTO.id())
+                .assistantMessageId(proposalDTO.assistantMessageId())
                 .operation(proposalDTO.operation().name())
                 .knowledgeDocumentId(proposalDTO.knowledgeDocumentId())
                 .title(proposalDTO.title())
