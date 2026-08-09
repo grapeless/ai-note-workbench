@@ -33,6 +33,16 @@ export interface ChatResponse {
     content: string
 }
 
+export interface Proposal {
+    proposalId: string
+    operation: 'CREATE' | 'UPDATE'
+    knowledgeDocumentId: number | null
+    title: string
+    contentType: string
+    diff: string
+    status: 'PENDING' | 'APPLIED'
+}
+
 export interface ChatModel {
     code: string
 }

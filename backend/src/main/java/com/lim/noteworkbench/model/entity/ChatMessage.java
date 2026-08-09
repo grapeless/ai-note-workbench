@@ -2,7 +2,6 @@ package com.lim.noteworkbench.model.entity;
 
 import com.lim.noteworkbench.model.enums.ChatMessageRole;
 import com.lim.noteworkbench.model.enums.ChatMessageStatus;
-import com.lim.noteworkbench.model.enums.ChatMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -58,11 +57,6 @@ public class ChatMessage {
      * 生成 AI 消息所使用的模型。
      */
     private String modelCode;
-
-    /**
-     * 生成 AI 消息时使用的对话模式。
-     */
-    private ChatMode mode;
 
     /**
      * 消息生成状态。

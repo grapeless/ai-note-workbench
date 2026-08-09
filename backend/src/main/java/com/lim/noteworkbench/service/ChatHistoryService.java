@@ -61,7 +61,6 @@ public class ChatHistoryService {
                 .content("")
                 .providerCode(chatRequestDTO.providerCode())
                 .modelCode(chatRequestDTO.modelCode())
-                .mode(chatRequestDTO.mode())
                 .status(ChatMessageStatus.GENERATING)
                 .build());
 
@@ -113,4 +112,3 @@ public class ChatHistoryService {
         conversations.forEach(conversation -> chatMemory.clear(conversation.getId().toString()));
     }
 }
-

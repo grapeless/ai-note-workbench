@@ -6,6 +6,7 @@ import com.lim.noteworkbench.mapper.KnowledgeCollectionMapper;
 import com.lim.noteworkbench.mapper.KnowledgeDocumentMapper;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.enums.DocumentStatus;
+import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,8 @@ public class KnowledgeDocumentService {
     @Transactional
     public KnowledgeDocument upload(Long collectionId, MultipartFile file) {
         if (file.isEmpty()) throw new BusinessException(ResultCode.PARAMS_ERROR, "上传文件不能为空");
-        if (knowledgeCollectionMapper.findById(collectionId) == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
+        if (knowledgeCollectionMapper.findById(collectionId) == null)
+            throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
 
         // 上传文件至对应集合的存储目录
         String sourcePath = storageService.store(collectionId, file);
@@ -50,12 +52,50 @@ public class KnowledgeDocumentService {
         }
     }
 
+    public EditableDocumentVO readEditableDocument(Long knowledgeCollectionId, Long knowledgeDocumentId) {
+        KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
+
+        if (!knowledgeDocument.getContentType().equals("text/plain")
+                && !knowledgeDocument.getContentType().equals("text/markdown")) {
+            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本编辑");
+        }
+
+        return new EditableDocumentVO(knowledgeDocument.getId(),
+                knowledgeDocument.getTitle(),
+                knowledgeDocument.getContentType(),
+                storageService.readText(knowledgeDocument.getSourcePath())
+        );
+    }
+
+    public void overwriteEditableDocument(Long knowledgeCollectionId, Long knowledgeDocumentId, String content) {
+        KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
+
+        if (!knowledgeDocument.getContentType().equals("text/plain")
+                && !knowledgeDocument.getContentType().equals("text/markdown")) {
+            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本编辑");
+        }
+
+        storageService.writeText(knowledgeDocument.getSourcePath(), content);
+
+        //更改状态，之后需要重新嵌入
+        updateStatus(knowledgeDocumentId, DocumentStatus.UPLOADED, null);
+    }
+
     public KnowledgeDocument getById(Long id) {
         KnowledgeDocument document = knowledgeDocumentMapper.findById(id);
 
         if (document == null) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "文档不存在");
 
         return document;
+    }
+
+    //限制文档必须属于当前知识库
+    public KnowledgeDocument getByIdInCollection(Long collectionId, Long knowledgeDocumentId) {
+        KnowledgeDocument knowledgeDocument = getById(knowledgeDocumentId);
+        if (!knowledgeDocument.getCollectionId().equals(collectionId)) {
+            throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "当前知识库中不存在该文档");
+        }
+        return knowledgeDocument;
     }
 
     public List<KnowledgeDocument> listByCollectionId(Long collectionId) {

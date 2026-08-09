@@ -31,4 +31,4 @@ app:
 logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
-    org.springframework.ai.chat.memory.repository.redis.RedisChatMemoryRepository: DEBUG
+#    org.springframework.ai.chat.memory.repository.redis.RedisChatMemoryRepository: DEBUG

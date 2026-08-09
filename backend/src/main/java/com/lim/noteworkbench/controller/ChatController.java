@@ -4,10 +4,13 @@ import com.lim.noteworkbench.common.response.Result;
 import com.lim.noteworkbench.model.dto.ChatRequestDTO;
 import com.lim.noteworkbench.model.entity.ChatConversation;
 import com.lim.noteworkbench.model.entity.ChatMessage;
+import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.vo.ChatResponseVO;
 import com.lim.noteworkbench.model.vo.ModelProviderVO;
+import com.lim.noteworkbench.model.vo.ProposalVO;
 import com.lim.noteworkbench.service.ChatHistoryService;
 import com.lim.noteworkbench.service.ChatService;
+import com.lim.noteworkbench.service.ProposalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +30,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final ChatHistoryService chatHistoryService;
+    private final ProposalService proposalService;
 
     @Operation(summary = "AI聊天")
     @PostMapping(value = "/doChat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -65,5 +69,19 @@ public class ChatController {
     public Result<Void> deleteByCollectionId(Long collectionId) {
         chatHistoryService.deleteByCollectionId(collectionId);
         return Result.success();
+    }
+
+    @Operation(summary = "查询会话中的文档变更提案")
+    @GetMapping("/proposal")
+    public Result<List<ProposalVO>> listProposals( UUID conversationId) {
+        return Result.success(proposalService.listByConversationId(conversationId).stream()
+                .map(ProposalVO::from)
+                .toList());
+    }
+
+    @Operation(summary = "确认并应用文档变更")
+    @PostMapping("/proposal/{proposalId}/apply")
+    public Result<KnowledgeDocument> apply(@PathVariable UUID proposalId, UUID conversationId) {
+        return Result.success(proposalService.applyUpdate(proposalId, conversationId));
     }
 }

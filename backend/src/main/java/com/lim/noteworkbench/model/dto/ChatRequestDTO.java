@@ -1,6 +1,5 @@
 package com.lim.noteworkbench.model.dto;
 
-import com.lim.noteworkbench.model.enums.ChatMode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,9 +20,6 @@ public record ChatRequestDTO(
 
         @Schema(description = "用户消息内容")
         @NotBlank @Size(max = 20_000) String message,
-
-        @Schema(description = "聊天模式")
-        @NotNull ChatMode mode,
 
         @Schema(description = "会话 ID")
         @NotNull UUID conversationId

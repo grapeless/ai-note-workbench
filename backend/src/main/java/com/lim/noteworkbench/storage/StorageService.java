@@ -19,4 +19,14 @@ public interface StorageService {
      * 加载文件
      */
     Resource loadAsResource(String relativePath);
+
+    /**
+     * 读取 UTF-8 文本文档(.txt .md)。
+     */
+    String readText(String relativePath);
+
+    /**
+     * 使用 UTF-8 覆盖已有文本文档。
+     */
+    void writeText(String relativePath, String content);
 }

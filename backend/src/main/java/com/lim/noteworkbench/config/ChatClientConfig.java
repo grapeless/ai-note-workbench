@@ -3,18 +3,14 @@ package com.lim.noteworkbench.config;
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.ChatModelProperties;
-import io.micrometer.observation.ObservationRegistry;
+import com.lim.noteworkbench.model.constant.KnowledgePrompt;
+import com.lim.noteworkbench.tool.BuiltinTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
-import org.springframework.ai.chat.client.advisor.observation.AdvisorObservationConvention;
-import org.springframework.ai.chat.client.observation.ChatClientObservationConvention;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.model.chat.client.autoconfigure.ChatClientBuilderConfigurer;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -41,28 +37,17 @@ public class ChatClientConfig {
     public ChatClientRegistry chatClientRegistry(
             ChatMemory chatMemory,
             ChatModelProperties properties,
-            ChatClientBuilderConfigurer configurer,
-            ObjectProvider<ObservationRegistry> observationRegistry,
-            ObjectProvider<ChatClientObservationConvention> chatClientConvention,
-            ObjectProvider<AdvisorObservationConvention> advisorConvention,
-            ObjectProvider<ToolCallingAdvisor.Builder<?>> toolCallingAdvisorBuilder
+            BuiltinTools builtinTools
     ) {
         Map<String, ChatClient> clients = new LinkedHashMap<>();
-
         properties.getProviders().forEach((providerCode, providerProperties) -> {
-            OpenAiChatModel chatModel = buildChatModel(providerProperties);
-
-            //为了保留可观测性和自定义功能，您应该注入 ChatClientBuilderConfigurer 来辅助创建ChatClient
-            ChatClient chatClient = configurer.configure(ChatClient.builder(chatModel,
-                            observationRegistry.getIfUnique(() -> ObservationRegistry.NOOP),
-                            chatClientConvention.getIfUnique(),
-                            advisorConvention.getIfUnique(),
-                            toolCallingAdvisorBuilder.getIfAvailable()))
+            ChatClient chatClient = ChatClient.builder(buildChatModel(providerProperties))
+                    .defaultTools(builtinTools)
+                    .defaultSystem(KnowledgePrompt.SYSTEM_PROMPT)
                     .defaultAdvisors(
                             MessageChatMemoryAdvisor.builder(chatMemory).build(),
                             new SimpleLoggerAdvisor()
-                    )
-                    .build();
+                    ).build();
 
             clients.put(providerCode, chatClient);
         });

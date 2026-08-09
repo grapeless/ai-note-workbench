@@ -13,9 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -104,9 +106,32 @@ public class LocalStorageService implements StorageService {
     public Resource loadAsResource(String relativePath) {
         Path target = resolveSafePath(relativePath);
 
-        if(!Files.isRegularFile(target)) throw new BusinessException(ResultCode.NOT_FOUND_ERROR,"源文件不存在");
+        if (!Files.isRegularFile(target)) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "源文件不存在");
 
         return new FileSystemResource(target);
+    }
+
+    @Override
+    public String readText(String relativePath) {
+        Path target = resolveSafePath(relativePath);
+
+        try {
+            return Files.readString(target, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException("读取文本文档失败", e);
+        }
+    }
+
+    @Override
+    public void writeText(String relativePath, String content) {
+        Path target = resolveSafePath(relativePath);
+
+        try {
+            Files.writeString(target, content,
+                    StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new UncheckedIOException("写入文本文档失败", e);
+        }
     }
 
     /**

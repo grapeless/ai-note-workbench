@@ -12,7 +12,6 @@
         <result property="reasoningContent" column="reasoning_content" jdbcType="VARCHAR"/>
         <result property="providerCode" column="provider_code" jdbcType="VARCHAR"/>
         <result property="modelCode" column="model_code" jdbcType="VARCHAR"/>
-        <result property="mode" column="mode" jdbcType="VARCHAR"/>
         <result property="status" column="status" jdbcType="VARCHAR"/>
         <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
         <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
@@ -28,7 +27,6 @@
             reasoning_content,
             provider_code,
             model_code,
-            mode,
             status
         )
         VALUES (
@@ -39,7 +37,6 @@
             #{reasoningContent},
             #{providerCode},
             #{modelCode},
-            #{mode},
             #{status}
         )
     </insert>
@@ -53,7 +50,6 @@
                reasoning_content,
                provider_code,
                model_code,
-               mode,
                status,
                create_time,
                update_time

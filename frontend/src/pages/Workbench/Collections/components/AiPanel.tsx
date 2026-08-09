@@ -22,7 +22,8 @@ import {
     listChatModels,
     sendChatMessage,
 } from "@/api/workbench/chat"
-import type {ChatConversation, ChatResponse, HistoryChatMessage, ModelProvider} from "@/api/workbench/types"
+import {applyProposal, listProposals} from "@/api/workbench/proposals"
+import type {ChatConversation, ChatResponse, HistoryChatMessage, ModelProvider, Proposal} from "@/api/workbench/types"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
@@ -36,6 +37,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {Textarea} from "@/components/ui/textarea"
+import {ProposalCard} from "./ProposalCard"
 
 interface UserChatMessage {
     /**
@@ -173,9 +175,16 @@ function AiPanel() {
     //请求状态
     const [sending, setSending] = useState(false)
     const [messagesLoading, setMessagesLoading] = useState(false)
+    const [proposals, setProposals] = useState<Proposal[]>([])
+    const [proposalsLoading, setProposalsLoading] = useState(false)
+    const [proposalReloadVersion, setProposalReloadVersion] = useState(0)
+    const [applyingProposalId, setApplyingProposalId] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
     //来自工作台Store，代表当前选择的知识库
     const selectedCollectionId = useWorkbenchStore(state => state.selectedCollectionId)
+    const selectedDocumentId = useWorkbenchStore(state => state.selectedDocumentId)
+    const refreshDocuments = useWorkbenchStore(state => state.refreshDocuments)
+    const loadDocument = useWorkbenchStore(state => state.loadDocument)
 
     //页面加载时加载可用模型列表
     useEffect(() => {
@@ -217,6 +226,53 @@ function AiPanel() {
             .then(setChatHistoryList)
             .catch(error => setError(getErrorMessage(error)))
     }, [selectedCollectionId]);
+
+    //切换会话时先移除上一个会话的提案。
+    useEffect(() => {
+        setProposals([])
+        setApplyingProposalId(null)
+    }, [conversationId])
+
+    //提案只属于当前会话；切换会话或完成一次变更后重新读取。
+    useEffect(() => {
+        let cancelled = false
+
+        setProposalsLoading(true)
+
+        listProposals(conversationId)
+            .then(result => {
+                if (!cancelled) setProposals(result ?? [])
+            })
+            .catch(error => {
+                if (!cancelled) setError(getErrorMessage(error))
+            })
+            .finally(() => {
+                if (!cancelled) setProposalsLoading(false)
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [conversationId, proposalReloadVersion])
+
+    const applyDocumentProposal = (proposal: Proposal) => {
+        if (proposal.status === "APPLIED" || applyingProposalId !== null) return
+
+        setApplyingProposalId(proposal.proposalId)
+        setError(null)
+
+        applyProposal(proposal.proposalId, conversationId)
+            .then(async document => {
+                setProposalReloadVersion(current => current + 1)
+                await refreshDocuments()
+
+                if (selectedDocumentId === document.id) {
+                    await loadDocument(document.id)
+                }
+            })
+            .catch(error => setError(getErrorMessage(error)))
+            .finally(() => setApplyingProposalId(null))
+    }
 
     //发送消息
     const submit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -266,6 +322,7 @@ function AiPanel() {
             .finally(() => {
                 setChatMessages(current => finishChatMessage(current, assistantMessageId))
                 setSending(false)
+                setProposalReloadVersion(current => current + 1)
                 listChatConversations(selectedCollectionId)
                     .then(setChatHistoryList)
                     .catch(error => setError(getErrorMessage(error)))
@@ -472,6 +529,18 @@ function AiPanel() {
                                 )}
                             </div>
                         </div>
+                    ))}
+                    {proposalsLoading && (
+                        <p className="font-mono text-[10px] font-bold text-ink/55">正在检查文档变更…</p>
+                    )}
+                    {proposals.map(proposal => (
+                        <ProposalCard
+                            key={proposal.proposalId}
+                            proposal={proposal}
+                            applying={applyingProposalId === proposal.proposalId}
+                            disabled={applyingProposalId !== null}
+                            onApply={() => applyDocumentProposal(proposal)}
+                        />
                     ))}
                     {error && (
                         <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
