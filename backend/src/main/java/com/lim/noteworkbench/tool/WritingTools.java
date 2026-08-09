@@ -2,6 +2,7 @@ package com.lim.noteworkbench.tool;
 
 import com.lim.noteworkbench.model.constant.AgentToolContextKey;
 import com.lim.noteworkbench.model.dto.ProposalDTO;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.model.vo.ProposalVO;
 import com.lim.noteworkbench.service.KnowledgeDocumentService;
@@ -51,7 +52,35 @@ public class WritingTools {
                         getAssistantMessageId(toolContext),
                         documentId,
                         proposedContent);
-        return ProposalVO.from(proposalDTO);
+        return new ProposalVO(proposalDTO);
+    }
+
+
+    @Tool(description = """
+          生成创建新文档的提案和 Diff。
+          该工具只生成提案，不会立即创建或写入文件。
+          仅支持 PLAIN_TEXT 和 MARKDOWN 文档。
+          title 应为包含扩展名的完整标题，例如“学习笔记.md”。
+          """)
+    public ProposalVO proposeDocumentCreate(
+            @ToolParam(description = "新文档标题，例如“学习笔记.md”") String title,
+            @ToolParam(description = "文档类型，只能使用PLAIN_TEXT 或 MARKDOWN") DocumentType documentType,
+            @ToolParam(description = "准备写入的新文档完整内容") String proposedContent,
+            ToolContext toolContext
+    ) {
+
+        //collectionId、conversationId和assistantMessageId 由应用注入 ToolContext，不需要模型生成。
+        ProposalDTO proposal = proposalService.create(
+                getCollectionId(toolContext),
+                getConversationId(toolContext),
+                getAssistantMessageId(toolContext),
+                title,
+                documentType,
+                proposedContent
+        );
+
+        //Tool 只向模型返回安全的提案展示信息，proposedContent 和内部会话字段不需要全部暴露。
+        return new ProposalVO(proposal);
     }
 
     private Long getCollectionId(ToolContext toolContext) {

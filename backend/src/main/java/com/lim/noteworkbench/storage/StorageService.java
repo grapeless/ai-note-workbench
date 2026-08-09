@@ -1,5 +1,6 @@
 package com.lim.noteworkbench.storage;
 
+import com.lim.noteworkbench.model.enums.DocumentType;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,7 +19,7 @@ public interface StorageService {
     /**
      * 加载文件
      */
-    Resource loadAsResource(String relativePath);
+    Resource load(String relativePath);
 
     /**
      * 读取 UTF-8 文本文档。
@@ -29,4 +30,9 @@ public interface StorageService {
      * 使用 UTF-8 覆盖已有文本文档。
      */
     void writeText(String relativePath, String content);
+
+    /**
+     * 创建UTF-8 文本文档
+     */
+    String createText(Long knowledgeCollectionId, DocumentType documentType, String content);
 }

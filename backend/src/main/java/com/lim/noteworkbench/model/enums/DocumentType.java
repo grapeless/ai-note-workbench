@@ -6,10 +6,10 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum DocumentType {
-    PDF("application/pdf", false),
-    PLAIN_TEXT("text/plain", true),
-    MARKDOWN("text/markdown", true);
+    PDF("pdf", false),
+    PLAIN_TEXT("txt", true),
+    MARKDOWN("md", true);
 
-    private final String mediaType;
+    private final String extension;
     private final boolean editable;
 }

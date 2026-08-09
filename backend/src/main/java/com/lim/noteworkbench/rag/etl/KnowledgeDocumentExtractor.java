@@ -29,7 +29,7 @@ public class KnowledgeDocumentExtractor {
      * @return 该文件转换后得到的Document列表
      */
     public List<Document> extract(KnowledgeDocument knowledgeDocument) {
-        Resource resource = storageService.loadAsResource(knowledgeDocument.getSourcePath());
+        Resource resource = storageService.load(knowledgeDocument.getSourcePath());
 
         List<Document> documents = (switch (knowledgeDocument.getDocumentType()) {
             case MARKDOWN -> readMarkdown(resource);

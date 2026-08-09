@@ -3,6 +3,7 @@ package com.lim.noteworkbench.storage;
 import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.StorageProperties;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -96,7 +97,7 @@ public class LocalStorageService implements StorageService {
     }
 
     @Override
-    public Resource loadAsResource(String relativePath) {
+    public Resource load(String relativePath) {
         Path target = resolveSafePath(relativePath);
 
         if (!Files.isRegularFile(target)) throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "源文件不存在");
@@ -124,6 +125,36 @@ public class LocalStorageService implements StorageService {
                     StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             throw new UncheckedIOException("写入文本文档失败", e);
+        }
+    }
+
+    @Override
+    public String createText(Long knowledgeCollectionId, DocumentType documentType, String content) {
+        //返回指定知识库集合的文件存储目录。
+        Path uploadDirectory = Path.of(storageProperties.getRoot())
+                .toAbsolutePath()
+                .normalize()
+                .resolve("uploads")
+                .resolve(knowledgeCollectionId.toString())
+                .normalize();
+
+        //用UUID替换真实文件名
+        Path target = uploadDirectory.resolve(UUID.randomUUID() + "." + documentType.getExtension())
+                .normalize();
+
+        try {
+            Files.createDirectories(uploadDirectory);
+            Files.writeString(target, content,
+                    StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+
+            return Path.of(storageProperties.getRoot())
+                    .toAbsolutePath()
+                    .normalize()
+                    .relativize(target)
+                    .toString()
+                    .replace(File.separatorChar, '/');
+        } catch (IOException e) {
+            throw new UncheckedIOException("创建文本文档失败", e);
         }
     }
 

@@ -4,6 +4,7 @@ import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.model.dto.ProposalDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.rag.etl.EtlPipeline;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,50 @@ public class ProposalService {
 
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final EtlPipeline etlPipeline;
+
+    /**
+     * 创建一份“新建文档”提案。
+     *
+     * 此时只记录用户确认后准备执行的内容，
+     * 不会真正创建文档或写入文件。
+     */
+    public ProposalDTO create(
+            Long collectionId,
+            UUID conversationId,
+            UUID assistantMessageId,
+            String title,
+            DocumentType documentType,
+            String proposedContent
+    ) {
+        ProposalDTO proposal = ProposalDTO.builder()
+                // 提案自身的唯一标识。
+                .id(UUID.randomUUID())
+
+                // 用于确定提案所属会话及前端展示位置。
+                .conversationId(conversationId)
+                .assistantMessageId(assistantMessageId)
+
+                // 新文档所属的知识库。
+                .knowledgeCollectionId(collectionId)
+
+                // 描述准备创建的文档。
+                .operation(ProposalDTO.Operation.CREATE)
+                .title(title)
+                .documentType(documentType)
+                .proposedContent(proposedContent)
+
+                // 新建文档相当于从空内容变成proposedContent。
+                .diff(buildDiff("", proposedContent))
+
+                // 提案尚未确认执行。
+                .status(ProposalDTO.Status.PENDING)
+                .createTime(LocalDateTime.now())
+                .build();
+
+        // 暂存提案，等待用户确认。
+        proposals.put(proposal.id(), proposal);
+        return proposal;
+    }
 
     /**
      * 创建“更新文档”提案，不执行任何文件操作
@@ -63,7 +108,7 @@ public class ProposalService {
         return proposalDTO;
     }
 
-    public synchronized KnowledgeDocument applyUpdate(UUID proposalId, UUID conversationId) {
+    public synchronized KnowledgeDocument apply(UUID proposalId, UUID conversationId) {
         ProposalDTO proposalDTO = get(proposalId, conversationId);
 
         // 已经执行完成时直接返回，避免用户重复点击造成重复写入。
@@ -71,6 +116,43 @@ public class ProposalService {
             return knowledgeDocumentService.getByIdInCollection(proposalDTO.knowledgeCollectionId(), proposalDTO.knowledgeDocumentId());
         }
 
+        return switch (proposalDTO.operation()) {
+            case CREATE -> applyCreate(proposalDTO);
+            case UPDATE -> applyUpdate(proposalDTO);
+        };
+    }
+
+    private KnowledgeDocument applyCreate(ProposalDTO proposalDTO) {
+        //第一次应用时，提案还没有关联文档。此时创建物理文件和数据库记录。
+        if (proposalDTO.knowledgeDocumentId() == null) {
+            KnowledgeDocument knowledgeDocument = knowledgeDocumentService.createEditableDocument(
+                    proposalDTO.knowledgeCollectionId(),
+                    proposalDTO.title(),
+                    proposalDTO.documentType(),
+                    proposalDTO.proposedContent()
+            );
+
+            //必须在 ETL 之前回填文档 ID。如果 ETL 失败，提案仍然保持 PENDING，但已经关联文档。
+            //用户再次确认时会复用该文档，而不是重复创建一份。
+            proposalDTO = proposalDTO.toBuilder()
+                    .knowledgeDocumentId(knowledgeDocument.getId())
+                    .build();
+            proposals.put(proposalDTO.id(), proposalDTO);
+        }
+
+        //对新文档执行解析、切分和向量化。
+        //如果这里失败，异常向上传递，提案不会被标记为APPLIED。
+        KnowledgeDocument document = etlPipeline.process(proposalDTO.knowledgeDocumentId());
+
+        //只有文件创建和 ETL 全部完成后，才将提案状态更新为 APPLIED。
+        proposals.put(proposalDTO.id(), proposalDTO.toBuilder()
+                .status(ProposalDTO.Status.APPLIED)
+                .build());
+
+        return document;
+    }
+
+    private KnowledgeDocument applyUpdate(ProposalDTO proposalDTO) {
         EditableDocumentVO editableDocument = knowledgeDocumentService.readEditableDocument(proposalDTO.knowledgeCollectionId(), proposalDTO.knowledgeDocumentId());
 
         //如果当前摘要不一致，说明提案生成后文档又被修改过。

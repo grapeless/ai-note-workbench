@@ -29,6 +29,8 @@ app:
     root: ./storage
 
 logging:
-  level:
-    org.springframework.ai.chat.client.advisor: DEBUG
+  file:
+    name: logs/application.log
+#  level:
+#    org.springframework.ai.chat.client.advisor: DEBUG
 #    org.springframework.ai.chat.memory.repository.redis.RedisChatMemoryRepository: DEBUG

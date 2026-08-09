@@ -75,13 +75,13 @@ public class ChatController {
     @GetMapping("/proposal")
     public Result<List<ProposalVO>> listProposals( UUID conversationId) {
         return Result.success(proposalService.listByConversationId(conversationId).stream()
-                .map(ProposalVO::from)
+                .map(ProposalVO::new)
                 .toList());
     }
 
     @Operation(summary = "确认并应用文档变更")
     @PostMapping("/proposal/{proposalId}/apply")
     public Result<KnowledgeDocument> apply(@PathVariable UUID proposalId, UUID conversationId) {
-        return Result.success(proposalService.applyUpdate(proposalId, conversationId));
+        return Result.success(proposalService.apply(proposalId, conversationId));
     }
 }

@@ -82,6 +82,40 @@ public class KnowledgeDocumentService {
         updateStatus(knowledgeDocumentId, DocumentStatus.UPLOADED, null);
     }
 
+    @Transactional
+    public KnowledgeDocument createEditableDocument(
+            Long knowledgeCollectionId,
+            String title,
+            DocumentType documentType,
+            String content
+    ) {
+        if (!documentType.isEditable()) {
+            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本创建");
+        }
+
+        //创建文件
+        String sourcePath = storageService.createText(knowledgeCollectionId, documentType, content);
+
+        try {
+            //文件创建成功后，再保存数据库元数据。此时只代表文档已经写入存储，还没有执行解析和向量化，因此初始状态为 UPLOADED。
+            KnowledgeDocument knowledgeDocument = KnowledgeDocument.builder()
+                    .collectionId(knowledgeCollectionId)
+                    .title(title)
+                    .sourcePath(sourcePath)
+                    .documentType(documentType)
+                    .status(DocumentStatus.UPLOADED.name())
+                    .errorMessage(null)
+                    .build();
+
+            knowledgeDocumentMapper.insert(knowledgeDocument);
+            return knowledgeDocumentMapper.findById(knowledgeDocument.getId());
+        } catch (RuntimeException e) {
+            //数据库插入失败时，删除刚刚创建的物理文件，避免存储目录中出现没有数据库记录的孤立文件。
+            storageService.delete(sourcePath);
+            throw e;
+        }
+    }
+
     public KnowledgeDocument getById(Long id) {
         KnowledgeDocument document = knowledgeDocumentMapper.findById(id);
 
