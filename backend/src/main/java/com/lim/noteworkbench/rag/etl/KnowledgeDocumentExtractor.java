@@ -31,12 +31,10 @@ public class KnowledgeDocumentExtractor {
     public List<Document> extract(KnowledgeDocument knowledgeDocument) {
         Resource resource = storageService.loadAsResource(knowledgeDocument.getSourcePath());
 
-        List<Document> documents = (switch (knowledgeDocument.getContentType()) {
-            case "application/pdf" -> readPdf(resource);
-            case "text/plain" -> new TextReader(resource).read();
-            case "text/markdown" -> readMarkdown(resource);
-            default ->
-                    throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的文档类型：" + knowledgeDocument.getContentType());
+        List<Document> documents = (switch (knowledgeDocument.getDocumentType()) {
+            case MARKDOWN -> readMarkdown(resource);
+            case PLAIN_TEXT -> new TextReader(resource).read();
+            case PDF -> readPdf(resource);
         }).stream()
                 .filter(document -> StringUtils.hasText(document.getText()))
                 .toList();

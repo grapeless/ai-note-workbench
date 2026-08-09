@@ -51,7 +51,7 @@ public class ProposalService {
                 .knowledgeDocumentId(knowledgeDocumentId)
                 .operation(ProposalDTO.Operation.UPDATE)
                 .title(editableDocument.title())
-                .contentType(editableDocument.contentType())
+                .documentType(editableDocument.documentType())
                 .proposedContent(proposedContent)
                 .diff(buildDiff(editableDocument.content(), proposedContent))
                 .expectedContentHash(hash(editableDocument.content()))

@@ -6,6 +6,8 @@ import {Skeleton} from "@/components/ui/skeleton"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
+import {DOCUMENT_TYPE_LABEL} from "../types.ts"
+
 const detailDateFormatter = new Intl.DateTimeFormat("zh-CN", {
     year: "numeric",
     month: "2-digit",
@@ -61,7 +63,7 @@ function DocumentMetadata({
     document: KnowledgeDocument
     collectionName: string
 }) {
-    const fileType = getFileTypeLabel(document)
+    const fileType = DOCUMENT_TYPE_LABEL[document.documentType]
     const status = getStatusMeta(document.status)
 
     return (
@@ -87,7 +89,7 @@ function DocumentMetadata({
                 <dl className="mt-4 grid border-l border-t border-ink/40 sm:grid-cols-2">
                     <MetadataItem label="所属集合" value={collectionName}/>
                     <MetadataItem label="文件类型" value={fileType}/>
-                    <MetadataItem label="Content-Type" value={document.contentType}/>
+                    <MetadataItem label="Document-Type" value={document.documentType}/>
                     <MetadataItem label="处理状态" value={`${status.label} / ${document.status}`}/>
                     <MetadataItem label="上传时间" value={formatDetailDate(document.createTime)}/>
                     <MetadataItem label="更新时间" value={formatDetailDate(document.updateTime)}/>
@@ -196,17 +198,6 @@ function DocumentDetailError({
             </Button>
         </div>
     )
-}
-
-function getFileTypeLabel(document: KnowledgeDocument) {
-    const contentType = document.contentType.toLowerCase()
-
-    if (contentType.includes("pdf")) return "PDF"
-    if (contentType.includes("markdown")) return "MD"
-    if (contentType.includes("text/plain")) return "TXT"
-
-    const extension = document.title.split(".").pop()
-    return extension && extension !== document.title ? extension.slice(0, 4).toUpperCase() : "FILE"
 }
 
 function getStatusMeta(status: string) {

@@ -21,7 +21,7 @@ public interface StorageService {
     Resource loadAsResource(String relativePath);
 
     /**
-     * 读取 UTF-8 文本文档(.txt .md)。
+     * 读取 UTF-8 文本文档。
      */
     String readText(String relativePath);
 

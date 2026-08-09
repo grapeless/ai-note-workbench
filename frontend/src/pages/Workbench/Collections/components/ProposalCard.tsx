@@ -4,6 +4,8 @@ import type {Proposal} from "@/api/workbench/types"
 import {Button} from "@/components/ui/button"
 import {cn} from "@/lib/utils"
 
+import {DOCUMENT_TYPE_LABEL} from "../types.ts"
+
 interface ProposalCardProps {
     proposal: Proposal
     applying: boolean
@@ -32,7 +34,7 @@ export function ProposalCard({proposal, applying, disabled, onApply}: ProposalCa
                     </div>
                     <p className="mt-1 wrap-break-word text-sm font-black">{proposal.title}</p>
                     <p className="mt-0.5 font-mono text-[10px] text-ink/55">
-                        {proposal.operation} · {proposal.contentType}
+                        {proposal.operation} · {DOCUMENT_TYPE_LABEL[proposal.documentType]}
                     </p>
                 </div>
             </div>

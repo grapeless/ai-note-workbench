@@ -8,12 +8,14 @@ export interface KnowledgeCollection {
     updateTime: string
 }
 
+export type DocumentType = 'PDF' | 'PLAIN_TEXT' | 'MARKDOWN'
+
 export interface KnowledgeDocument {
     id: number
     collectionId: number
     title: string
     sourcePath: string
-    contentType: string
+    documentType: DocumentType
     status: string
     errorMessage: string | null
     createTime: string
@@ -40,7 +42,7 @@ export interface Proposal {
     operation: 'CREATE' | 'UPDATE'
     knowledgeDocumentId: number | null
     title: string
-    contentType: string
+    documentType: DocumentType
     diff: string
     status: 'PENDING' | 'APPLIED'
 }

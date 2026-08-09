@@ -7,6 +7,7 @@ import com.lim.noteworkbench.model.constant.AgentToolContextKey;
 import com.lim.noteworkbench.model.constant.KnowledgeMetadataKey;
 import com.lim.noteworkbench.model.entity.KnowledgeCollection;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import com.lim.noteworkbench.rag.etl.KnowledgeDocumentExtractor;
 import com.lim.noteworkbench.service.KnowledgeCollectionService;
 import com.lim.noteworkbench.service.KnowledgeDocumentService;
@@ -90,7 +91,7 @@ public class ResearchTools {
                 .map(document -> new DocumentSummary(
                         document.getId(),
                         document.getTitle(),
-                        document.getContentType(),
+                        document.getDocumentType(),
                         document.getStatus()
                 ))
                 .toList();
@@ -98,7 +99,7 @@ public class ResearchTools {
     public record DocumentSummary(
             Long documentId,
             String title,
-            String contentType,
+            DocumentType documentType,
             String status
     ) {
     }

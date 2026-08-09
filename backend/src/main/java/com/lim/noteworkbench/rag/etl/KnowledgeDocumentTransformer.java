@@ -4,6 +4,7 @@ import com.lim.noteworkbench.common.exception.BusinessException;
 import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.model.constant.KnowledgeMetadataKey;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
@@ -58,7 +59,7 @@ public class KnowledgeDocumentTransformer {
                 KnowledgeMetadataKey.KNOWLEDGE_DOCUMENT_ID, knowledgeDocument.getId(),
                 KnowledgeMetadataKey.ORDER, order
         ));
-        String sourceLocator = resolveSourceLocator(knowledgeDocument.getContentType(), chunkDocument, order);
+        String sourceLocator = resolveSourceLocator(knowledgeDocument.getDocumentType(), chunkDocument, order);
         if (sourceLocator != null) metadata.put(KnowledgeMetadataKey.SOURCE_LOCATOR, sourceLocator);
 
         return chunkDocument.mutate().metadata(metadata).build();
@@ -67,26 +68,25 @@ public class KnowledgeDocumentTransformer {
     /**
      * 根据文档类型和元数据解析文本块的来源定位信息
      *
-     * @param contentType 文档类型
+     * @param documentType 文档类型
      * @param chunkDocument 被tokenTextSplitter处理过的文档 {@link Document}
      * @param order 文本块在知识文档中的顺序
      * @return 来源定位信息，若无法解析则返回 null
      */
-    private String resolveSourceLocator(String contentType, Document chunkDocument, int order) {
-        return switch (contentType) {
-            case "text/plain" -> "text" + order;
-            case "text/markdown" -> {
+    private String resolveSourceLocator(DocumentType documentType, Document chunkDocument, int order) {
+        return switch (documentType) {
+            case PLAIN_TEXT -> "text" + order;
+            case MARKDOWN -> {
                 Object title = chunkDocument.getMetadata().get("title");
                 yield title == null
                         ? "chunk:" + order
                         : "section:" + title;
             }
-            case "application/pdf" -> {
+            case PDF -> {
                 //根据文档元数据中的起始页码解析出定位信息，若未找到页码元数据则返回null
                 Object page = chunkDocument.getMetadata().get(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER);
                 yield page == null ? null : "page" + page;
             }
-            default -> throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的文档类型：" + contentType);
         };
     }
 }

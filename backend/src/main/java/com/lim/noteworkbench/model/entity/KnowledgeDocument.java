@@ -1,5 +1,6 @@
 package com.lim.noteworkbench.model.entity;
 
+import com.lim.noteworkbench.model.enums.DocumentType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,7 +39,7 @@ public class KnowledgeDocument {
     /**
      * 文档内容类型。
      */
-    private String contentType;
+    private DocumentType documentType;
 
     /**
      * 文档当前的处理状态。

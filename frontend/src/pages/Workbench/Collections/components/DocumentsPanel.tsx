@@ -7,6 +7,7 @@ import {Skeleton} from "@/components/ui/skeleton"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
+import {DOCUMENT_TYPE_LABEL} from "../types.ts"
 import {DocumentImport} from "./DocumentImport"
 
 const documentDateFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -35,7 +36,7 @@ export function DocumentsPanel() {
         if (!query) return documents
 
         return documents.filter((document) =>
-            [document.title, document.contentType, document.status, getFileTypeLabel(document)]
+            [document.title, document.documentType, document.status, DOCUMENT_TYPE_LABEL[document.documentType]]
                 .some((value) => value.toLowerCase().includes(query)),
         )
     }, [documents, searchQuery])
@@ -154,7 +155,7 @@ function DocumentRow({
     selected: boolean
     onSelect: () => void
 }) {
-    const fileType = getFileTypeLabel(document)
+    const fileType = DOCUMENT_TYPE_LABEL[document.documentType]
     const status = getStatusMeta(document.status)
 
     return (
@@ -242,17 +243,6 @@ function DocumentListEmpty({title, description}: { title: string; description: s
             <p className="mt-2 text-xs leading-5 text-ink/70">{description}</p>
         </div>
     )
-}
-
-function getFileTypeLabel(document: KnowledgeDocument) {
-    const contentType = document.contentType.toLowerCase()
-
-    if (contentType.includes("pdf")) return "PDF"
-    if (contentType.includes("markdown")) return "MD"
-    if (contentType.includes("text/plain")) return "TXT"
-
-    const extension = document.title.split(".").pop()
-    return extension && extension !== document.title ? extension.slice(0, 4).toUpperCase() : "FILE"
 }
 
 function getStatusMeta(status: string) {

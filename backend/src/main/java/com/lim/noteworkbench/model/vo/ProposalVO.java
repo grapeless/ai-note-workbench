@@ -1,6 +1,7 @@
 package com.lim.noteworkbench.model.vo;
 
 import com.lim.noteworkbench.model.dto.ProposalDTO;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import lombok.Builder;
 
 import java.util.UUID;
@@ -12,7 +13,7 @@ public record ProposalVO(
         String operation,
         Long knowledgeDocumentId,
         String title,
-        String contentType,
+        DocumentType documentType,
         String diff,
         ProposalDTO.Status status
 ) {
@@ -23,7 +24,7 @@ public record ProposalVO(
                 .operation(proposalDTO.operation().name())
                 .knowledgeDocumentId(proposalDTO.knowledgeDocumentId())
                 .title(proposalDTO.title())
-                .contentType(proposalDTO.contentType())
+                .documentType(proposalDTO.documentType())
                 .diff(proposalDTO.diff())
                 .status(proposalDTO.status())
                 .build();

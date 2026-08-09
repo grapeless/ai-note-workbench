@@ -20,8 +20,8 @@
         <result property="sourcePath"
                 column="source_path"/>
 
-        <result property="contentType"
-                column="content_type"/>
+        <result property="documentType"
+                column="document_type"/>
 
         <result property="status"
                 column="status"/>
@@ -46,7 +46,7 @@
         collection_id,
         title,
         source_path,
-        content_type,
+        document_type,
         status,
         error_message
         )
@@ -54,7 +54,7 @@
         #{collectionId},
         #{title},
         #{sourcePath},
-        #{contentType},
+        #{documentType},
         #{status},
         #{errorMessage}
         )
@@ -67,7 +67,7 @@
         collection_id,
         title,
         source_path,
-        content_type,
+        document_type,
         status,
         error_message,
         create_time,
@@ -83,7 +83,7 @@
         collection_id,
         title,
         source_path,
-        content_type,
+        document_type,
         status,
         error_message,
         create_time,

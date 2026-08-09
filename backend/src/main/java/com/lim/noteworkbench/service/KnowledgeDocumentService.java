@@ -6,6 +6,7 @@ import com.lim.noteworkbench.mapper.KnowledgeCollectionMapper;
 import com.lim.noteworkbench.mapper.KnowledgeDocumentMapper;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.enums.DocumentStatus;
+import com.lim.noteworkbench.model.enums.DocumentType;
 import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.storage.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,8 @@ public class KnowledgeDocumentService {
         if (knowledgeCollectionMapper.findById(collectionId) == null)
             throw new BusinessException(ResultCode.NOT_FOUND_ERROR, "指定的集合不存在");
 
+        DocumentType documentType = resolveDocumentType(file);
+
         // 上传文件至对应集合的存储目录
         String sourcePath = storageService.store(collectionId, file);
         try {
@@ -37,7 +40,7 @@ public class KnowledgeDocumentService {
                     .collectionId(collectionId)
                     .title(resolveTitle(file))
                     .sourcePath(sourcePath)
-                    .contentType(resolveContentType(file))
+                    .documentType(documentType)
                     .status("UPLOADED")
                     .errorMessage(null)
                     .build();
@@ -55,14 +58,13 @@ public class KnowledgeDocumentService {
     public EditableDocumentVO readEditableDocument(Long knowledgeCollectionId, Long knowledgeDocumentId) {
         KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
 
-        if (!knowledgeDocument.getContentType().equals("text/plain")
-                && !knowledgeDocument.getContentType().equals("text/markdown")) {
+        if (!knowledgeDocument.getDocumentType().isEditable()) {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本编辑");
         }
 
         return new EditableDocumentVO(knowledgeDocument.getId(),
                 knowledgeDocument.getTitle(),
-                knowledgeDocument.getContentType(),
+                knowledgeDocument.getDocumentType(),
                 storageService.readText(knowledgeDocument.getSourcePath())
         );
     }
@@ -70,8 +72,7 @@ public class KnowledgeDocumentService {
     public void overwriteEditableDocument(Long knowledgeCollectionId, Long knowledgeDocumentId, String content) {
         KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
 
-        if (!knowledgeDocument.getContentType().equals("text/plain")
-                && !knowledgeDocument.getContentType().equals("text/markdown")) {
+        if (!knowledgeDocument.getDocumentType().isEditable()) {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本编辑");
         }
 
@@ -130,23 +131,21 @@ public class KnowledgeDocumentService {
     }
 
     /**
-     * 根据上传文件的扩展名解析其内容类型。
+     * 根据上传文件的扩展名解析文档类型。
      *
      * @param file 上传的文件
-     * @return 文件的内容类型
+     * @return 文档类型
      */
-    private String resolveContentType(MultipartFile file) {
-        String filename = file.getOriginalFilename();
+    private DocumentType resolveDocumentType(MultipartFile file) {
+        String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
 
-        String extension = StringUtils.getFilenameExtension(filename);
-
-        if (extension == null) return "application/octet-stream";
+        if (extension == null) throw new BusinessException(ResultCode.PARAMS_ERROR, "文件缺少扩展名");
 
         return switch (extension.toLowerCase(Locale.ROOT)) {
-            case "pdf" -> "application/pdf";
-            case "txt" -> "text/plain";
-            case "md", "markdown" -> "text/markdown";
-            default -> "application/octet-stream";
+            case "pdf" -> DocumentType.PDF;
+            case "txt" -> DocumentType.PLAIN_TEXT;
+            case "md", "markdown" -> DocumentType.MARKDOWN;
+            default -> throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的文件类型");
         };
     }
 }

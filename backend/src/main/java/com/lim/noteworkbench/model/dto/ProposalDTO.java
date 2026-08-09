@@ -1,5 +1,6 @@
 package com.lim.noteworkbench.model.dto;
 
+import com.lim.noteworkbench.model.enums.DocumentType;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ import java.util.UUID;
  * @param knowledgeDocumentId   目标文档 ID；创建文档时为空
  * @param operation             变更操作类型
  * @param title                 文档标题
- * @param contentType           文档内容类型
+ * @param documentType          文档类型
  * @param proposedContent       准备写入的完整文档内容
  * @param diff                  用于向用户展示的内容差异
  * @param expectedContentHash   创建提案时原文的摘要，用于应用前检测内容冲突
@@ -34,7 +35,7 @@ public record ProposalDTO(
         Long knowledgeDocumentId,
         Operation operation,
         String title,
-        String contentType,
+        DocumentType documentType,
         String proposedContent,
         String diff,
         String expectedContentHash,

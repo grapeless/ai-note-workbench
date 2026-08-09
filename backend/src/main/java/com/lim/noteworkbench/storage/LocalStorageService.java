@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -28,9 +27,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class LocalStorageService implements StorageService {
-    private static final Set<String> ALLOWED_EXTENSIONS =
-            Set.of("pdf", "txt", "md", "markdown");
-
     private final StorageProperties storageProperties;
 
     @Override
@@ -51,9 +47,6 @@ public class LocalStorageService implements StorageService {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "文件缺少扩展名");
         }
         extension = extension.toLowerCase(Locale.ROOT);
-
-        if (!ALLOWED_EXTENSIONS.contains(extension))
-            throw new BusinessException(ResultCode.PARAMS_ERROR, "暂时只支持 PDF、TXT 和 Markdown 文件");
 
         Path uploadDirectory = Path.of(storageProperties.getRoot())
                 .toAbsolutePath() //将配置的文件存储路径转为绝对路径
