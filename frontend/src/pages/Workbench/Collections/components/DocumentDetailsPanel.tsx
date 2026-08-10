@@ -1,6 +1,19 @@
-import {AlertCircle, FileSearch, FileText, RefreshCw} from "lucide-react"
+import {useState} from "react"
+import {AlertCircle, FileSearch, FileText, LoaderCircle, RefreshCw, Trash2} from "lucide-react"
 
 import type {KnowledgeDocument} from "@/api/workbench/types"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogMedia,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import {Button} from "@/components/ui/button"
 import {Skeleton} from "@/components/ui/skeleton"
 import {cn} from "@/lib/utils"
@@ -65,6 +78,10 @@ function DocumentMetadata({
 }) {
     const fileType = DOCUMENT_TYPE_LABEL[document.documentType]
     const status = getStatusMeta(document.status)
+    const deleteDocument = useWorkbenchStore((state) => state.deleteDocument)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [deleting, setDeleting] = useState(false)
+    const [deleteError, setDeleteError] = useState<string | null>(null)
 
     return (
         <>
@@ -82,6 +99,90 @@ function DocumentMetadata({
                 <span className="raw-sticker bg-white/35 px-2 py-1 text-[10px] font-black">
                     ID #{document.id}
                 </span>
+                <AlertDialog
+                    open={deleteDialogOpen}
+                    onOpenChange={(open) => {
+                        setDeleteDialogOpen(open)
+                        if (open) setDeleteError(null)
+                    }}
+                >
+                    <AlertDialogTrigger
+                        render={
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="ml-auto h-8 rounded-none border-2 border-ink bg-marker-red/10 px-3 font-black text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-red/20 active:translate-y-px active:shadow-none"
+                            />
+                        }
+                    >
+                        <Trash2 className="size-3.5"/>
+                        删除文档
+                    </AlertDialogTrigger>
+
+                    <AlertDialogContent className="rotate-[-0.15deg] gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-red bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
+                        <AlertDialogHeader className="grid grid-cols-[auto_1fr] grid-rows-[auto_auto] place-items-start gap-x-3 gap-y-1 border-b border-dashed border-ink/35 p-5 text-left">
+                            <AlertDialogMedia className="row-span-2 mb-0 rounded-none border-2 border-ink bg-marker-red/15">
+                                <Trash2 className="size-5 text-destructive"/>
+                            </AlertDialogMedia>
+                            <AlertDialogTitle className="font-display text-xl font-black">
+                                删除这份文档？
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-semibold leading-6 text-ink/70">
+                                文档文件、检索片段和向量数据都将被删除，此操作无法撤销。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <div className="p-5">
+                            <p className="wrap-break-word border-l-4 border-marker-red bg-marker-red/8 px-3 py-2 font-mono text-sm font-black">
+                                {document.title}
+                            </p>
+
+                            {deleteError && (
+                                <p className="mt-4 border-l-4 border-destructive bg-destructive/8 px-3 py-2 text-sm font-semibold text-destructive" role="alert">
+                                    {deleteError}
+                                </p>
+                            )}
+                        </div>
+
+                        <AlertDialogFooter className="m-0 rounded-none border-t border-dashed border-ink/35 bg-kraft/10 p-4">
+                            <AlertDialogCancel
+                                disabled={deleting}
+                                className="h-9 rounded-none border-2 border-ink bg-paper px-4 font-black"
+                            >
+                                取消
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                type="button"
+                                variant="destructive"
+                                disabled={deleting}
+                                onClick={() => {
+                                    setDeleting(true)
+                                    setDeleteError(null)
+
+                                    deleteDocument(document.id)
+                                        .then(() => setDeleteDialogOpen(false))
+                                        .catch(error => setDeleteError(
+                                            error instanceof Error ? error.message : "删除文档失败，请重试",
+                                        ))
+                                        .finally(() => setDeleting(false))
+                                }}
+                                className="h-9 rounded-none border-2 border-ink bg-marker-red px-4 font-black text-ink shadow-[2px_2px_0_var(--ink)] transition-none hover:bg-marker-red/80 active:translate-y-px active:shadow-none"
+                            >
+                                {deleting ? (
+                                    <>
+                                        <LoaderCircle className="animate-spin motion-reduce:animate-none"/>
+                                        正在删除
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2/>
+                                        确认删除
+                                    </>
+                                )}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
 
             <section className="py-7" aria-labelledby="metadata-title">

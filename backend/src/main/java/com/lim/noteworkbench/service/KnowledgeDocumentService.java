@@ -141,6 +141,15 @@ public class KnowledgeDocumentService {
         return knowledgeDocumentMapper.findByCollectionId(collectionId);
     }
 
+    @Transactional
+    public void delete(Long knowledgeDocumentId) {
+        KnowledgeDocument document = getById(knowledgeDocumentId);
+        //先执行数据库删除，再删除文件
+        //数据库删除失败时，不会误删文件；文件删除失败会抛出运行时异常，数据库事务回滚
+        knowledgeDocumentMapper.deleteById(knowledgeDocumentId);
+        storageService.delete(document.getSourcePath());
+    }
+
     public void updateStatus(Long id, DocumentStatus status, String errorMessage) {
         knowledgeDocumentMapper.updateStatus(id, status.name(), errorMessage);
     }

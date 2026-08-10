@@ -1,10 +1,12 @@
-import {get, postStream, remove} from "@/api";
+import {get, post, postStream, remove} from "@/api";
 import type {
     ChatConversation,
     ChatRequest,
     ChatResponse,
     HistoryChatMessage,
-    ModelProvider
+    KnowledgeDocument,
+    ModelProvider,
+    Proposal
 } from "@/api/workbench/types.ts";
 
 export const listChatModels = () =>
@@ -25,3 +27,9 @@ export const deleteChatConversation = (conversationId: string) =>
 
 export const clearChatConversations = (collectionId: number) =>
     remove<void>('/chat/conversations', {collectionId})
+
+export const listProposals = (conversationId: string) =>
+    get<Proposal[]>("/chat/proposal", {conversationId})
+
+export const applyProposal = (proposalId: string, conversationId: string) =>
+    post<KnowledgeDocument>(`/chat/proposal/${proposalId}/apply?conversationId=${encodeURIComponent(conversationId)}`)

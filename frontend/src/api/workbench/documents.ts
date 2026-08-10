@@ -1,4 +1,4 @@
-import {get, post, upload} from '@/api'
+import {get, post, remove, upload} from '@/api'
 import type {KnowledgeDocument} from '@/api/workbench/types'
 
 export const listDocuments = (collectionId: number) =>
@@ -21,3 +21,6 @@ export const getDocument = (id: number) =>
 
 export const processDocument = (id: number) =>
     post<KnowledgeDocument>(`/documents/${id}/process`)
+
+export const deleteDocument = (id: number) =>
+    remove<void>(`/documents/${id}`)

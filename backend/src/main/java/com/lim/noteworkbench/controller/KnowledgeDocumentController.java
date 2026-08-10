@@ -58,4 +58,11 @@ public class KnowledgeDocumentController {
     public Result<KnowledgeDocument> process(@PathVariable @Positive(message = "文档ID不合法") Long id) {
         return Result.success(etlPipeline.process(id));
     }
+
+    @Operation(summary = "删除指定文档")
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        knowledgeDocumentService.delete(id);
+        return Result.success();
+    }
 }

@@ -15,14 +15,15 @@ import {
 } from "lucide-react"
 import {cn} from "@/lib/utils"
 import {
+    applyProposal,
     clearChatConversations,
     deleteChatConversation,
     listChatConversations,
     listChatMessages,
     listChatModels,
+    listProposals,
     sendChatMessage,
 } from "@/api/workbench/chat"
-import {applyProposal, listProposals} from "@/api/workbench/proposals"
 import type {ChatConversation, ChatResponse, HistoryChatMessage, ModelProvider, Proposal} from "@/api/workbench/types"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
