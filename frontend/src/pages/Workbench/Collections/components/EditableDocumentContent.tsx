@@ -1,5 +1,5 @@
-import {useDeferredValue, useEffect, useState} from "react"
-import {Check, Columns2, Eye, FileText, Pencil, RefreshCw, RotateCcw, X} from "lucide-react"
+import {useDeferredValue, useEffect, useMemo, useRef, useState} from "react"
+import {Check, Columns2, Eye, FileText, Link2, Pencil, RefreshCw, RotateCcw, X} from "lucide-react"
 
 import {getEditableDocumentContent, updateEditableDocumentContent} from "@/api/workbench/documents"
 import type {EditableDocument} from "@/api/workbench/types"
@@ -15,6 +15,8 @@ const modeButtonClass = "h-7 rounded-none border-2 border-ink px-2 font-sans tex
 export function EditableDocumentContent({collectionId, documentId}: { collectionId: number; documentId: number }) {
     const refreshDocuments = useWorkbenchStore((state) => state.refreshDocuments)
     const loadDocument = useWorkbenchStore((state) => state.loadDocument)
+    const activeCitation = useWorkbenchStore((state) => state.activeCitation)
+    const clearCitation = useWorkbenchStore((state) => state.clearCitation)
     const [editableDocument, setEditableDocument] = useState<EditableDocument | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -58,6 +60,20 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
 
     const changed = editableDocument !== null && draft !== editableDocument.content
     const previewContent = useDeferredValue(draft)
+    const citation = activeCitation?.documentId === documentId ? activeCitation : null
+    const citationRange = useMemo(
+        () => citation === null ? null : findCitationRange(draft, citation.quote),
+        [citation, draft]
+    )
+    const citationMarkRef = useRef<HTMLElement>(null)
+
+    useEffect(() => {
+        if (citation !== null && editableDocument !== null) setMode("source")
+    }, [citation, editableDocument])
+
+    useEffect(() => {
+        citationMarkRef.current?.scrollIntoView({behavior: "smooth", block: "center"})
+    }, [citationRange, mode])
 
     useEffect(() => {
         useWorkbenchStore.setState({dirtyDocumentId: changed ? documentId : null})
@@ -195,6 +211,41 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
                         ) : null}
                     </div>
 
+                    {citation && (
+                        <div className="flex flex-wrap items-center gap-2 border-b border-ink bg-marker-yellow/20 px-3 py-2 text-xs">
+                            <Link2 className="size-3.5 shrink-0"/>
+                            <span className="raw-sticker bg-marker-yellow px-1.5 py-0.5 font-mono text-[9px] font-black">
+                                {citation.citationId}
+                            </span>
+                            <span className="min-w-0 flex-1 font-semibold">
+                                {citationRange
+                                    ? "已定位到引用原文"
+                                    : "当前版本未找到完整引用片段，已打开对应文档"}
+                                {changed && "；引用来自上次嵌入的版本"}
+                            </span>
+                            {mode !== "source" && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-7 rounded-none border border-ink bg-paper px-2 text-[10px] font-black"
+                                    onClick={() => setMode("source")}
+                                >
+                                    查看原文
+                                </Button>
+                            )}
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="关闭引用定位"
+                                className="size-7 rounded-none"
+                                onClick={clearCitation}
+                            >
+                                <X className="size-3.5"/>
+                            </Button>
+                        </div>
+                    )}
+
                     {mode === "split" && editableDocument.documentType === "MARKDOWN" ? (
                         <div className="@container">
                             <div className="grid divide-y divide-ink/35 @2xl:grid-cols-2 @2xl:divide-x @2xl:divide-y-0">
@@ -214,7 +265,18 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
                         preview
                     ) : (
                         <pre className="min-h-72 overflow-x-auto whitespace-pre-wrap wrap-break-word p-4 font-mono text-sm leading-6 text-ink">
-                            {draft}
+                            {citationRange ? (
+                                <>
+                                    {draft.slice(0, citationRange.start)}
+                                    <mark
+                                        ref={citationMarkRef}
+                                        className="border-b-2 border-ink bg-marker-yellow px-0.5 text-ink shadow-[2px_0_0_var(--marker-yellow),-2px_0_0_var(--marker-yellow)]"
+                                    >
+                                        {draft.slice(citationRange.start, citationRange.end)}
+                                    </mark>
+                                    {draft.slice(citationRange.end)}
+                                </>
+                            ) : draft}
                         </pre>
                     )}
 
@@ -306,4 +368,80 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
             ) : null}
         </section>
     )
+}
+
+
+/**
+ * 在原始文档内容中查找引用快照对应的高亮范围。
+ *
+ * quote 来自嵌入后的 Chunk，可能已经丢失 Markdown 标记或发生空白变化，因此依次尝试：
+ * 1. 原文精确匹配；
+ * 2. 合并连续空白后匹配；
+ * 3. 忽略标点、Markdown 格式符号和英文大小写后匹配。
+ *
+ * 后两种匹配会同时记录归一化字符在原文中的位置，确保最终返回的 start、end 仍然可以直接用于截取和高亮原始文档内容。
+ */
+function findCitationRange(content: string, quote: string) {
+    const exactStart = content.indexOf(quote)
+    if (exactStart >= 0) return {start: exactStart, end: exactStart + quote.length}
+
+    const candidates = [
+        quote,
+        ...quote.split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line.length >= 12)
+            .sort((left, right) => right.length - left.length),
+    ]
+
+    for (const candidate of candidates) {
+        let normalizedContent = ""
+        const contentIndexes: number[] = []
+
+        for (let index = 0; index < content.length; index++) {
+            const character = content[index]
+
+            if (/\s/.test(character)) {
+                if (normalizedContent.endsWith(" ")) continue
+                normalizedContent += " "
+            } else {
+                normalizedContent += character
+            }
+            contentIndexes.push(index)
+        }
+
+        const normalizedCandidate = candidate.replace(/\s+/g, " ").trim()
+        const normalizedStart = normalizedContent.indexOf(normalizedCandidate)
+
+        if (normalizedStart >= 0) {
+            return {
+                start: contentIndexes[normalizedStart],
+                end: contentIndexes[normalizedStart + normalizedCandidate.length - 1] + 1,
+            }
+        }
+
+        let plainContent = ""
+        const plainContentIndexes: number[] = []
+
+        for (let index = 0; index < content.length; index++) {
+            if (!/[\p{L}\p{N}]/u.test(content[index])) continue
+
+            plainContent += content[index].toLocaleLowerCase()
+            plainContentIndexes.push(index)
+        }
+
+        const plainCandidate = [...candidate]
+            .filter(character => /[\p{L}\p{N}]/u.test(character))
+            .join("")
+            .toLocaleLowerCase()
+        const plainStart = plainContent.indexOf(plainCandidate)
+
+        if (plainStart >= 0) {
+            return {
+                start: plainContentIndexes[plainStart],
+                end: plainContentIndexes[plainStart + plainCandidate.length - 1] + 1,
+            }
+        }
+    }
+
+    return null
 }

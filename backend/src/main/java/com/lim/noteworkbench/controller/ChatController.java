@@ -3,8 +3,8 @@ package com.lim.noteworkbench.controller;
 import com.lim.noteworkbench.common.response.Result;
 import com.lim.noteworkbench.model.dto.ChatRequestDTO;
 import com.lim.noteworkbench.model.entity.ChatConversation;
-import com.lim.noteworkbench.model.entity.ChatMessage;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.model.vo.ChatMessageVO;
 import com.lim.noteworkbench.model.vo.ChatResponseVO;
 import com.lim.noteworkbench.model.vo.ModelProviderVO;
 import com.lim.noteworkbench.model.vo.ProposalVO;
@@ -53,7 +53,7 @@ public class ChatController {
 
     @Operation(summary = "查询指定会话的全部消息")
     @GetMapping("/conversations/{conversationId}/messages")
-    public Result<List<ChatMessage>> listMessages(@PathVariable UUID conversationId) {
+    public Result<List<ChatMessageVO>> listMessages(@PathVariable UUID conversationId) {
         return Result.success(chatHistoryService.listMessages(conversationId));
     }
 

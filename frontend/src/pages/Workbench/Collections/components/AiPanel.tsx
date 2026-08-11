@@ -22,8 +22,14 @@ import {
     listProposals,
     sendChatMessage,
 } from "@/api/workbench/chat"
-import type {ChatConversation, ChatResponse, HistoryChatMessage, ModelProvider, Proposal} from "@/api/workbench/types"
-import {MarkdownContent} from "@/components/MarkdownContent"
+import type {
+    ChatCitation,
+    ChatConversation,
+    ChatResponse,
+    HistoryChatMessage,
+    ModelProvider,
+    Proposal
+} from "@/api/workbench/types"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
@@ -37,6 +43,8 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {Textarea} from "@/components/ui/textarea"
+import {CitationMarkdownContent} from "./CitationMarkdownContent"
+import {MessageCitations} from "./MessageCitations"
 import {ProposalCard} from "./ProposalCard"
 
 interface UserChatMessage {
@@ -73,6 +81,10 @@ interface AssistantChatMessage {
      * 最终回答。
      */
     content: string
+    /**
+     * 回答引用的结构化来源。
+     */
+    citations: ChatCitation[]
 }
 
 /**
@@ -134,7 +146,8 @@ const toChatMessage = (historyChatMessage: HistoryChatMessage): ChatMessage => {
         reasoningContent: historyChatMessage.reasoningContent ?? "",
         reasoningOpen: false,
         streaming: false,
-        content: historyChatMessage.content
+        content: historyChatMessage.content,
+        citations: historyChatMessage.citations ?? [],
     }
 }
 
@@ -176,6 +189,7 @@ function AiPanel() {
     const selectedDocumentId = useWorkbenchStore(state => state.selectedDocumentId)
     const refreshDocuments = useWorkbenchStore(state => state.refreshDocuments)
     const loadDocument = useWorkbenchStore(state => state.loadDocument)
+    const openCitation = useWorkbenchStore(state => state.openCitation)
 
     //页面加载时加载可用模型列表
     useEffect(() => {
@@ -290,7 +304,8 @@ function AiPanel() {
                 reasoningContent: "",
                 reasoningOpen: true,
                 streaming: true,
-                content: ""
+                content: "",
+                citations: [],
             }
         ]
         setChatMessages(nextMessages)
@@ -310,6 +325,15 @@ function AiPanel() {
             //每收到一个流式事件就执行一次
             setChatMessages(current => applyChatResponse(current, assistantMessageId, chatResponse))
         })
+            .then(() => listChatMessages(conversationId))
+            .then(historyMessages => {
+                const citations = historyMessages.find(message => message.id === assistantMessageId)?.citations ?? []
+                setChatMessages(current => current.map(message =>
+                    message.role === "assistant" && message.id === assistantMessageId
+                        ? {...message, citations}
+                        : message
+                ))
+            })
             .catch(error => setError(getErrorMessage(error)))
             .finally(() => {
                 setChatMessages(current => finishChatMessage(current, assistantMessageId))
@@ -511,7 +535,18 @@ function AiPanel() {
                                         )}
 
                                         {message.content && (
-                                            <MarkdownContent content={message.content}/>
+                                            <>
+                                                <CitationMarkdownContent
+                                                    content={message.content}
+                                                    citations={message.citations}
+                                                    onCitationClick={citation => void openCitation(citation)}
+                                                />
+                                                <MessageCitations
+                                                    content={message.content}
+                                                    citations={message.citations}
+                                                    onCitationClick={citation => void openCitation(citation)}
+                                                />
+                                            </>
                                         )}
 
                                         {message.streaming && !message.reasoningContent && !message.content && (

@@ -1,4 +1,4 @@
-import type {KnowledgeCollection, KnowledgeDocument} from "@/api/workbench/types.ts";
+import type {ChatCitation, KnowledgeCollection, KnowledgeDocument} from "@/api/workbench/types.ts";
 import {create} from "zustand/react";
 import {listCollections} from "@/api/workbench/collections.ts";
 import {deleteDocument as deleteDocumentRequest, getDocument, listDocuments} from "@/api/workbench/documents.ts";
@@ -8,6 +8,7 @@ export type WorkbenchView = "documents" | "details" | "ai"
 type PendingWorkbenchSelection =
     | { type: "collection"; id: number | null }
     | { type: "document"; id: number | null }
+    | { type: "citation"; citation: ChatCitation }
 
 type ChatMessage = {
     id: number
@@ -39,6 +40,7 @@ type WorkBenchState = {
     documentError: string | null
     dirtyDocumentId: number | null
     pendingSelection: PendingWorkbenchSelection | null
+    activeCitation: ChatCitation | null
 
     //页面其他数据
     searchQuery: string
@@ -61,6 +63,8 @@ type WorkBenchState = {
     //选中的文档相关
     selectDocument: (id: number | null) => Promise<void>
     loadDocument: (id: number, showLoading?: boolean) => Promise<void>
+    openCitation: (citation: ChatCitation) => Promise<void>
+    clearCitation: () => void
 }
 
 const getErrorMessage = (error: unknown) =>
@@ -88,6 +92,7 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
     documentError: null,
     dirtyDocumentId: null,
     pendingSelection: null,
+    activeCitation: null,
 
     searchQuery: "",
     messages: [
@@ -143,6 +148,7 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
                     documentError: null,
                     dirtyDocumentId: null,
                     pendingSelection: null,
+                    activeCitation: null,
                     searchQuery: "",
                 } : {})
             })
@@ -179,6 +185,7 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             documentLoading: false,
             documentError: null,
             pendingSelection: null,
+            activeCitation: null,
             searchQuery: "",
             ...(selectedCollectionId === null ? {} : {activeView: "documents" as const})
         })
@@ -216,6 +223,7 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
                         document: null,
                         documentLoading: false,
                         documentError: null,
+                        activeCitation: null,
                     }
                     : {}),
             })
@@ -256,11 +264,13 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
                 documentError: null,
                 dirtyDocumentId: null,
                 pendingSelection: null,
+                activeCitation: null,
             } : {}),
         }))
     },
     selectDocument: async (selectedDocumentId) => {
         if (selectedDocumentId === get().selectedDocumentId) {
+            set({activeCitation: null})
             if (selectedDocumentId !== null && (get().document === null || get().documentError !== null)) {
                 await get().loadDocument(selectedDocumentId,)
             }
@@ -277,6 +287,7 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             documentLoading: false,
             documentError: null,
             pendingSelection: null,
+            activeCitation: null,
 
             ...(selectedDocumentId === null ? {} : {activeView: "details" as const,}),
         })
@@ -317,4 +328,34 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             })
         }
     },
+    openCitation: async (citation) => {
+        if (!citation.available) return
+
+        if (get().dirtyDocumentId !== null && citation.documentId !== get().selectedDocumentId) {
+            set({pendingSelection: {type: "citation", citation}})
+            return
+        }
+
+        if (citation.documentId === get().selectedDocumentId) {
+            set({activeCitation: citation, activeView: "details"})
+
+            if (get().document === null || get().documentError !== null) {
+                await get().loadDocument(citation.documentId)
+            }
+            return
+        }
+
+        documentRequestVersion++
+        set({
+            selectedDocumentId: citation.documentId,
+            document: null,
+            documentLoading: false,
+            documentError: null,
+            pendingSelection: null,
+            activeCitation: citation,
+            activeView: "details",
+        })
+        await get().loadDocument(citation.documentId)
+    },
+    clearCitation: () => set({activeCitation: null}),
 }))

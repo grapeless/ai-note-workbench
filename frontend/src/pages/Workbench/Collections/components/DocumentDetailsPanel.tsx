@@ -1,5 +1,5 @@
 import {useState} from "react"
-import {AlertCircle, ExternalLink, FileSearch, FileText, LoaderCircle, RefreshCw, Trash2} from "lucide-react"
+import {AlertCircle, ExternalLink, FileSearch, FileText, Link2, LoaderCircle, RefreshCw, Trash2, X} from "lucide-react"
 
 import {BASE_URL} from "@/api"
 import {processDocument as processDocumentRequest} from "@/api/workbench/documents"
@@ -84,6 +84,12 @@ function DocumentMetadata({
     const deleteDocument = useWorkbenchStore((state) => state.deleteDocument)
     const refreshDocuments = useWorkbenchStore((state) => state.refreshDocuments)
     const loadDocument = useWorkbenchStore((state) => state.loadDocument)
+    const activeCitation = useWorkbenchStore((state) => state.activeCitation)
+    const clearCitation = useWorkbenchStore((state) => state.clearCitation)
+    const citation = activeCitation?.documentId === document.id ? activeCitation : null
+    const pdfPageHash = citation?.pageNumber === null || citation?.pageNumber === undefined
+        ? ""
+        : `#page=${citation.pageNumber}`
     const [processing, setProcessing] = useState(false)
     const [processError, setProcessError] = useState<string | null>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -233,7 +239,7 @@ function DocumentMetadata({
                             <p className="mt-2 text-xs font-semibold text-ink/60">浏览器原生阅读器 / INLINE</p>
                         </div>
                         <a
-                            href={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}`}
+                            href={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}${pdfPageHash}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex h-8 items-center gap-2 border-2 border-ink bg-paper px-3 text-xs font-black text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/30 active:translate-y-px active:shadow-none"
@@ -243,10 +249,34 @@ function DocumentMetadata({
                         </a>
                     </div>
 
+                    {citation && (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-2 border-ink bg-marker-yellow/20 px-3 py-2 text-xs shadow-[3px_3px_0_var(--kraft)]">
+                            <Link2 className="size-3.5 shrink-0"/>
+                            <span className="raw-sticker bg-marker-yellow px-1.5 py-0.5 font-mono text-[9px] font-black">
+                                {citation.citationId}
+                            </span>
+                            <span className="min-w-0 flex-1 font-semibold">
+                                {citation.pageNumber === null
+                                    ? "已打开 PDF 来源；当前版本暂不支持原文高亮"
+                                    : `已请求跳转到第 ${citation.pageNumber} 页；当前版本暂不支持原文高亮`}
+                            </span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="关闭引用定位"
+                                className="size-7 rounded-none"
+                                onClick={clearCitation}
+                            >
+                                <X className="size-3.5"/>
+                            </Button>
+                        </div>
+                    )}
+
                     <div className="mt-4 overflow-hidden border-2 border-ink bg-white shadow-[4px_4px_0_var(--kraft)]">
                         <iframe
-                            key={`${document.collectionId}:${document.id}`}
-                            src={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}`}
+                            key={`${document.collectionId}:${document.id}:${citation?.citationId ?? "preview"}:${citation?.pageNumber ?? "start"}`}
+                            src={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}${pdfPageHash}`}
                             title={`${document.title} PDF 预览`}
                             className="h-[72vh] min-h-128 w-full bg-white"
                         />

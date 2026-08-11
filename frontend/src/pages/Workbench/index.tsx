@@ -56,6 +56,7 @@ export function Workbench() {
     const loadCollections = useWorkbenchStore((state) => state.loadCollections)
     const selectCollection = useWorkbenchStore((state) => state.selectCollection)
     const selectDocument = useWorkbenchStore((state) => state.selectDocument)
+    const openCitation = useWorkbenchStore((state) => state.openCitation)
     const dirtyDocumentId = useWorkbenchStore((state) => state.dirtyDocumentId)
     const pendingSelection = useWorkbenchStore((state) => state.pendingSelection)
     const blocker = useBlocker(dirtyDocumentId !== null)
@@ -291,6 +292,8 @@ export function Workbench() {
                                     void selectCollection(pendingSelection.id)
                                 } else if (pendingSelection?.type === "document") {
                                     void selectDocument(pendingSelection.id)
+                                } else if (pendingSelection?.type === "citation") {
+                                    void openCitation(pendingSelection.citation)
                                 } else if (blocker.state === "blocked") {
                                     blocker.proceed()
                                 }

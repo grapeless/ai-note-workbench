@@ -5,18 +5,22 @@ import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.mapper.ChatConversationMapper;
 import com.lim.noteworkbench.mapper.ChatMessageMapper;
 import com.lim.noteworkbench.model.dto.ChatRequestDTO;
+import com.lim.noteworkbench.model.entity.ChatCitation;
 import com.lim.noteworkbench.model.entity.ChatConversation;
 import com.lim.noteworkbench.model.entity.ChatMessage;
 import com.lim.noteworkbench.model.enums.ChatMessageRole;
 import com.lim.noteworkbench.model.enums.ChatMessageStatus;
+import com.lim.noteworkbench.model.vo.ChatMessageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class ChatHistoryService {
 
     private final ChatConversationMapper chatConversationMapper;
     private final ChatMessageMapper chatMessageMapper;
+    private final ChatCitationService chatCitationService;
     private final ChatMemory chatMemory;
 
     @Transactional
@@ -93,8 +98,22 @@ public class ChatHistoryService {
         return chatConversationMapper.findByCollectionId(collectionId);
     }
 
-    public List<ChatMessage> listMessages(UUID conversationId) {
-        return chatMessageMapper.findByConversationId(conversationId);
+    public List<ChatMessageVO> listMessages(UUID conversationId) {
+        Map<UUID, List<ChatMessageVO.Citation>> citationsByMessageId = chatCitationService
+                .listByConversationId(conversationId)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        ChatCitation::getAssistantMessageId,
+                        Collectors.mapping(ChatMessageVO.Citation::new, Collectors.toList())
+                ));
+
+        return chatMessageMapper.findByConversationId(conversationId)
+                .stream()
+                .map(message -> new ChatMessageVO(
+                        message,
+                        citationsByMessageId.getOrDefault(message.getId(), List.of())
+                ))
+                .toList();
     }
 
     @Transactional

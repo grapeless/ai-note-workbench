@@ -81,18 +81,21 @@ export interface ChatConversation {
 
 export type ChatMessageRole = 'USER' | 'ASSISTANT'
 
-export type ChatMessageStatus = 'GENERATING' | 'COMPLETED' | 'FAILED'
+export interface ChatCitation {
+    citationId: string
+    documentId: number
+    documentTitle: string
+    documentType: DocumentType
+    sourceLocator: string | null
+    pageNumber: number | null
+    quote: string
+    available: boolean
+}
 
 export interface HistoryChatMessage {
     id: string
-    conversationId: string
-    sequenceId: number
     role: ChatMessageRole
     content: string
     reasoningContent: string | null
-    providerCode: string | null
-    modelCode: string | null
-    status: ChatMessageStatus
-    createTime: string
-    updateTime: string
+    citations: ChatCitation[]
 }

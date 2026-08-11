@@ -9,11 +9,13 @@ import com.lim.noteworkbench.model.entity.KnowledgeCollection;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.enums.DocumentType;
 import com.lim.noteworkbench.rag.etl.KnowledgeDocumentExtractor;
+import com.lim.noteworkbench.service.ChatCitationService;
 import com.lim.noteworkbench.service.KnowledgeCollectionService;
 import com.lim.noteworkbench.service.KnowledgeDocumentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @SuppressWarnings("unused")
 @Component
@@ -32,6 +35,7 @@ public class ResearchTools {
     private final VectorStoreRegistry vectorStoreRegistry;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final KnowledgeDocumentExtractor knowledgeDocumentExtractor;
+    private final ChatCitationService chatCitationService;
 
     //todo 优化检索参数
     @Tool(description = """
@@ -43,7 +47,9 @@ public class ResearchTools {
             ToolContext toolContext) {
 
         Long collectionId = (Long) toolContext.getContext().get(AgentToolContextKey.COLLECTION_ID);
+        UUID assistantMessageId = (UUID) toolContext.getContext().get(AgentToolContextKey.ASSISTANT_MESSAGE_ID);
         KnowledgeCollection knowledgeCollection = knowledgeCollectionService.getById(collectionId);
+
         return vectorStoreRegistry.get(knowledgeCollection.getEmbeddingProvider(), knowledgeCollection.getEmbeddingModel())
                 .similaritySearch(SearchRequest.builder()
                         .query(query)
@@ -57,14 +63,27 @@ public class ResearchTools {
                     Map<String, Object> metadata = document.getMetadata();
                     long knowledgeDocumentId = ((Number) metadata.get(KnowledgeMetadataKey.KNOWLEDGE_DOCUMENT_ID)).longValue();
                     int chunkOrder = ((Number) metadata.get(KnowledgeMetadataKey.ORDER)).intValue();
+                    KnowledgeDocument knowledgeDocument = knowledgeDocumentService.getByIdInCollection(collectionId, knowledgeDocumentId);
+                    String citationId = "D" + knowledgeDocumentId + "-C" + chunkOrder;
+                    String sourceLocator = ((String) metadata.get(KnowledgeMetadataKey.SOURCE_LOCATOR));
+                    Integer pageNumber = knowledgeDocument.getDocumentType() == DocumentType.PDF
+                            ? ((Number) metadata.get(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER)).intValue()
+                            : null;
+
+                    chatCitationService.save(
+                            assistantMessageId,
+                            citationId,
+                            knowledgeDocument,
+                            sourceLocator,
+                            pageNumber,
+                            document.getText());
 
                     return new SearchResult(
-                            "D" + knowledgeDocumentId + "-C" + chunkOrder,
+                            citationId,
                             knowledgeDocumentId,
                             chunkOrder,
-                            (String) metadata.get(KnowledgeMetadataKey.SOURCE_LOCATOR),
-                            document.getText()
-                    );
+                            sourceLocator,
+                            document.getText());
                 })
                 .toList();
     }
@@ -77,7 +96,6 @@ public class ResearchTools {
             String content
     ) {
     }
-
 
     @Tool(description = """
             列出当前知识库中的文档清单。
@@ -96,6 +114,7 @@ public class ResearchTools {
                 ))
                 .toList();
     }
+
     public record DocumentSummary(
             Long documentId,
             String title,
@@ -105,10 +124,10 @@ public class ResearchTools {
     }
 
     @Tool(description = """
-          按原始文档的自然分段读取指定内容，例如 PDF 的某一页或 Markdown 的某一部分。
-          当检索片段不足以支撑结论、需要查看上下文或用户指定了某份文档时使用。
-          partIndex 从 0 开始，返回结果可以作为回答引用。
-          """)
+            按原始文档的自然分段读取指定内容，例如 PDF 的某一页或 Markdown 的某一部分。
+            当检索片段不足以支撑结论、需要查看上下文或用户指定了某份文档时使用。
+            partIndex 从 0 开始，返回结果可以作为回答引用。
+            """)
     public DocumentPart readKnowledgeDocumentPart(
             @ToolParam(description = "要读取的文档 ID") Long documentId,
             @ToolParam(description = "要读取的分段序号，从 0 开始") Integer partIndex, ToolContext toolContext
@@ -118,19 +137,35 @@ public class ResearchTools {
 
         List<Document> parts = knowledgeDocumentExtractor.extract(knowledgeDocument);
 
-        if (partIndex < 0 || partIndex >= parts.size()) {
+        if (partIndex < 0 || partIndex >= parts.size())
             throw new BusinessException(ResultCode.PARAMS_ERROR,
                     "分段序号超出范围，当前文档共有 " + parts.size() + " 个分段");
-        }
+
+        UUID assistantMessageId = (UUID) toolContext.getContext().get(AgentToolContextKey.ASSISTANT_MESSAGE_ID);
+        Document part = parts.get(partIndex);
+        String citationId = "D" + documentId + "-P" + partIndex;
+        Integer pageNumber = knowledgeDocument.getDocumentType() == DocumentType.PDF
+                ? ((Number) part.getMetadata().get(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER)).intValue()
+                : null;
+        String sourceLocator = knowledgeDocument.getDocumentType() == DocumentType.PDF
+                ? "page" + pageNumber
+                : null;
+
+        chatCitationService.save(
+                assistantMessageId,
+                citationId,
+                knowledgeDocument,
+                sourceLocator,
+                pageNumber,
+                part.getText());
 
         return new DocumentPart(
-                "D" + documentId + "-P" + partIndex,
+                citationId,
                 documentId,
                 knowledgeDocument.getTitle(),
                 partIndex,
                 parts.size(),
-                parts.get(partIndex).getText()
-        );
+                part.getText());
     }
 
     public record DocumentPart(

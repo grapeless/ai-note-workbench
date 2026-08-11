@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lim.noteworkbench.mapper.ChatCitationMapper">
+    <resultMap id="ChatCitationResultMap" type="com.lim.noteworkbench.model.entity.ChatCitation">
+        <id property="assistantMessageId" column="assistant_message_id" jdbcType="OTHER"/>
+        <id property="citationId" column="citation_id" jdbcType="VARCHAR"/>
+        <result property="documentId" column="document_id" jdbcType="BIGINT"/>
+        <result property="documentVersion" column="document_version" jdbcType="TIMESTAMP"/>
+        <result property="documentTitle" column="document_title" jdbcType="VARCHAR"/>
+        <result property="documentType" column="document_type" jdbcType="VARCHAR"/>
+        <result property="sourceLocator" column="source_locator" jdbcType="VARCHAR"/>
+        <result property="pageNumber" column="page_number" jdbcType="INTEGER"/>
+        <result property="quote" column="quote" jdbcType="VARCHAR"/>
+        <result property="available" column="available" jdbcType="BOOLEAN"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <insert id="upsert"
+            parameterType="com.lim.noteworkbench.model.entity.ChatCitation">
+        INSERT INTO chat_citation (
+            assistant_message_id,
+            citation_id,
+            document_id,
+            document_version,
+            document_title,
+            document_type,
+            source_locator,
+            page_number,
+            quote
+        )
+        VALUES (
+            #{assistantMessageId},
+            #{citationId},
+            #{documentId},
+            #{documentVersion},
+            #{documentTitle},
+            #{documentType},
+            #{sourceLocator},
+            #{pageNumber},
+            #{quote}
+        )
+        ON CONFLICT (assistant_message_id, citation_id)
+        DO UPDATE SET
+            document_id = EXCLUDED.document_id,
+            document_version = EXCLUDED.document_version,
+            document_title = EXCLUDED.document_title,
+            document_type = EXCLUDED.document_type,
+            source_locator = EXCLUDED.source_locator,
+            page_number = EXCLUDED.page_number,
+            quote = EXCLUDED.quote
+    </insert>
+
+    <select id="findByConversationId" resultMap="ChatCitationResultMap">
+        SELECT citation.assistant_message_id,
+               citation.citation_id,
+               citation.document_id,
+               citation.document_version,
+               citation.document_title,
+               citation.document_type,
+               citation.source_locator,
+               citation.page_number,
+               citation.quote,
+               citation.create_time,
+               COALESCE(
+                   current_document.update_time = citation.document_version,
+                   FALSE
+               ) AS available
+        FROM chat_citation citation
+        JOIN chat_message message
+          ON message.id = citation.assistant_message_id
+        LEFT JOIN knowledge_document current_document
+          ON current_document.id = citation.document_id
+        WHERE message.conversation_id = #{conversationId}
+        ORDER BY message.sequence_id, citation.citation_id
+    </select>
+</mapper>
