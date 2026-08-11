@@ -1,8 +1,19 @@
 import {type CSSProperties, useEffect, useState} from "react"
-import {AlertCircle, Box, Boxes, Brain, ChevronRight, RefreshCw, Settings2} from "lucide-react"
-import {NavLink, Outlet, useLocation, useNavigate} from "react-router"
+import {AlertCircle, Box, Boxes, Brain, ChevronRight, RefreshCw, Settings2, TriangleAlert} from "lucide-react"
+import {NavLink, Outlet, useBlocker, useLocation, useNavigate} from "react-router"
 
 import type {KnowledgeCollection} from "@/api/workbench/types"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogMedia,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {Button} from "@/components/ui/button"
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
 import {
@@ -44,6 +55,10 @@ export function Workbench() {
     const collectionsError = useWorkbenchStore((state) => state.collectionsError)
     const loadCollections = useWorkbenchStore((state) => state.loadCollections)
     const selectCollection = useWorkbenchStore((state) => state.selectCollection)
+    const selectDocument = useWorkbenchStore((state) => state.selectDocument)
+    const dirtyDocumentId = useWorkbenchStore((state) => state.dirtyDocumentId)
+    const pendingSelection = useWorkbenchStore((state) => state.pendingSelection)
+    const blocker = useBlocker(dirtyDocumentId !== null)
 
     const collectionsActive = location.pathname.startsWith("/workbench/collections")
     const settingsActive = location.pathname.startsWith("/workbench/settings")
@@ -239,6 +254,53 @@ export function Workbench() {
                     </div>
                 </SidebarInset>
             </SidebarProvider>
+
+            <AlertDialog
+                open={pendingSelection !== null || blocker.state === "blocked"}
+                onOpenChange={(open) => {
+                    if (open) return
+
+                    useWorkbenchStore.setState({pendingSelection: null})
+                    if (blocker.state === "blocked") blocker.reset()
+                }}
+            >
+                <AlertDialogContent className="rotate-[-0.15deg] gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-yellow bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
+                    <AlertDialogHeader className="grid grid-cols-[auto_1fr] grid-rows-[auto_auto] place-items-start gap-x-3 gap-y-1 border-b border-dashed border-ink/35 p-5 text-left">
+                        <AlertDialogMedia className="row-span-2 mb-0 rounded-none border-2 border-ink bg-marker-yellow/35">
+                            <TriangleAlert className="size-5"/>
+                        </AlertDialogMedia>
+                        <AlertDialogTitle className="font-display text-xl font-black">
+                            放弃尚未保存的修改？
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm font-semibold leading-6 text-ink/70">
+                            当前正文仍有修改保存在页面中。继续切换后，这些修改将无法恢复。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter className="m-0 rounded-none border-t border-dashed border-ink/35 bg-kraft/10 p-4">
+                        <AlertDialogCancel className="h-9 rounded-none border-2 border-ink bg-paper px-4 font-black">
+                            继续编辑
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            type="button"
+                            className="h-9 rounded-none border-2 border-ink bg-marker-yellow px-4 font-black text-ink shadow-[2px_2px_0_var(--ink)] transition-none hover:bg-marker-yellow/80 active:translate-y-px active:shadow-none"
+                            onClick={() => {
+                                useWorkbenchStore.setState({dirtyDocumentId: null, pendingSelection: null})
+
+                                if (pendingSelection?.type === "collection") {
+                                    void selectCollection(pendingSelection.id)
+                                } else if (pendingSelection?.type === "document") {
+                                    void selectDocument(pendingSelection.id)
+                                } else if (blocker.state === "blocked") {
+                                    blocker.proceed()
+                                }
+                            }}
+                        >
+                            放弃并继续
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </TooltipProvider>
     )
 }

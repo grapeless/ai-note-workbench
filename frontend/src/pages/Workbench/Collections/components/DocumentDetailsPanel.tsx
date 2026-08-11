@@ -2,6 +2,7 @@ import {useState} from "react"
 import {AlertCircle, ExternalLink, FileSearch, FileText, LoaderCircle, RefreshCw, Trash2} from "lucide-react"
 
 import {BASE_URL} from "@/api"
+import {processDocument as processDocumentRequest} from "@/api/workbench/documents"
 import type {KnowledgeDocument} from "@/api/workbench/types"
 import {
     AlertDialog,
@@ -81,6 +82,10 @@ function DocumentMetadata({
     const fileType = DOCUMENT_TYPE_LABEL[document.documentType]
     const status = getStatusMeta(document.status)
     const deleteDocument = useWorkbenchStore((state) => state.deleteDocument)
+    const refreshDocuments = useWorkbenchStore((state) => state.refreshDocuments)
+    const loadDocument = useWorkbenchStore((state) => state.loadDocument)
+    const [processing, setProcessing] = useState(false)
+    const [processError, setProcessError] = useState<string | null>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -98,22 +103,48 @@ function DocumentMetadata({
                 <span className={cn("raw-sticker px-2 py-1 text-[10px] font-black", status.className)}>
                     {status.label}
                 </span>
-                <span className="raw-sticker bg-white/35 px-2 py-1 text-[10px] font-black">
-                    ID #{document.id}
-                </span>
-                <AlertDialog
-                    open={deleteDialogOpen}
-                    onOpenChange={(open) => {
-                        setDeleteDialogOpen(open)
-                        if (open) setDeleteError(null)
-                    }}
-                >
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {(document.status.toUpperCase() === "UPLOADED" || document.status.toUpperCase() === "FAILED") && (
+                        <Button
+                            type="button"
+                            disabled={processing}
+                            className="h-8 rounded-none border-2 border-ink bg-marker-yellow px-3 font-black text-ink shadow-[2px_2px_0_var(--ink)] transition-none hover:bg-marker-yellow/80 active:translate-y-px active:shadow-none"
+                            onClick={async () => {
+                                setProcessing(true)
+                                setProcessError(null)
+
+                                try {
+                                    await processDocumentRequest(document.id)
+                                } catch (error) {
+                                    setProcessError(error instanceof Error ? error.message : "文档嵌入失败")
+                                } finally {
+                                    await Promise.all([
+                                        refreshDocuments(),
+                                        loadDocument(document.id, false),
+                                    ])
+                                    setProcessing(false)
+                                }
+                            }}
+                        >
+                            <RefreshCw className={cn("size-3.5", processing && "animate-spin")}/>
+                            {processing
+                                ? "正在嵌入"
+                                : document.status.toUpperCase() === "FAILED" ? "重新处理" : "重新嵌入"}
+                        </Button>
+                    )}
+                    <AlertDialog
+                        open={deleteDialogOpen}
+                        onOpenChange={(open) => {
+                            setDeleteDialogOpen(open)
+                            if (open) setDeleteError(null)
+                        }}
+                    >
                     <AlertDialogTrigger
                         render={
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="ml-auto h-8 rounded-none border-2 border-ink bg-marker-red/10 px-3 font-black text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-red/20 active:translate-y-px active:shadow-none"
+                                className="h-8 rounded-none border-2 border-ink bg-marker-red/10 px-3 font-black text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-red/20 active:translate-y-px active:shadow-none"
                             />
                         }
                     >
@@ -184,8 +215,15 @@ function DocumentMetadata({
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
-                </AlertDialog>
+                    </AlertDialog>
+                </div>
             </div>
+
+            {processError && (
+                <p className="mt-3 border-l-4 border-marker-red bg-marker-red/10 px-3 py-2 text-sm font-semibold text-marker-red">
+                    {processError}
+                </p>
+            )}
 
             {document.documentType === "PDF" ? (
                 <section className="border-b-2 border-ink py-7">
@@ -210,7 +248,7 @@ function DocumentMetadata({
                             key={`${document.collectionId}:${document.id}`}
                             src={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}`}
                             title={`${document.title} PDF 预览`}
-                            className="h-[72vh] min-h-[32rem] w-full bg-white"
+                            className="h-[72vh] min-h-128 w-full bg-white"
                         />
                     </div>
                 </section>
@@ -341,17 +379,15 @@ function DocumentDetailError({
 function getStatusMeta(status: string) {
     switch (status.toUpperCase()) {
         case "UPLOADED":
-            return {label: "已上传", className: "bg-marker-blue/10"}
-        case "PENDING":
-            return {label: "等待处理", className: "bg-kraft/35"}
-        case "PROCESSING":
-            return {label: "处理中", className: "bg-marker-yellow/65"}
-        case "READY":
-        case "COMPLETED":
-            return {label: "可用", className: "bg-marker-green/20"}
+            return {label: "待嵌入", className: "bg-marker-blue/10"}
+        case "PARSING":
+            return {label: "解析中", className: "bg-marker-yellow/65"}
+        case "PARSED":
+            return {label: "待写入向量", className: "bg-marker-yellow/35"}
+        case "EMBEDDED":
+            return {label: "已嵌入", className: "bg-marker-green/20"}
         case "FAILED":
-        case "ERROR":
-            return {label: "失败", className: "bg-marker-red/15"}
+            return {label: "处理失败", className: "bg-marker-red/15"}
         default:
             return {label: status || "未知", className: "bg-white/35"}
     }

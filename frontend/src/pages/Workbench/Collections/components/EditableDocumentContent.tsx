@@ -8,10 +8,13 @@ import {Button} from "@/components/ui/button"
 import {Skeleton} from "@/components/ui/skeleton"
 import {Textarea} from "@/components/ui/textarea"
 import {cn} from "@/lib/utils"
+import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
 const modeButtonClass = "h-7 rounded-none border-2 border-ink px-2 font-sans text-[10px] font-black shadow-[2px_2px_0_var(--kraft)] transition-none active:translate-y-px active:shadow-none"
 
 export function EditableDocumentContent({collectionId, documentId}: { collectionId: number; documentId: number }) {
+    const refreshDocuments = useWorkbenchStore((state) => state.refreshDocuments)
+    const loadDocument = useWorkbenchStore((state) => state.loadDocument)
     const [editableDocument, setEditableDocument] = useState<EditableDocument | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -55,6 +58,22 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
 
     const changed = editableDocument !== null && draft !== editableDocument.content
     const previewContent = useDeferredValue(draft)
+
+    useEffect(() => {
+        useWorkbenchStore.setState({dirtyDocumentId: changed ? documentId : null})
+    }, [changed, documentId])
+
+    useEffect(() => {
+        if (!changed) return
+
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault()
+            event.returnValue = true
+        }
+
+        window.addEventListener("beforeunload", handleBeforeUnload)
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+    }, [changed])
 
     const editor = (
         <Textarea
@@ -263,6 +282,10 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
                                         setEditableDocument(result)
                                         setDraft(result.content)
                                         setMode(result.documentType === "MARKDOWN" ? "preview" : "source")
+                                        await Promise.all([
+                                            refreshDocuments(),
+                                            loadDocument(documentId, false),
+                                        ])
                                     } catch (error) {
                                         setSaveError(error instanceof Error ? error.message : "正文保存失败")
                                     } finally {

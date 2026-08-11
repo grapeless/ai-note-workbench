@@ -5,6 +5,10 @@ import {deleteDocument as deleteDocumentRequest, getDocument, listDocuments} fro
 
 export type WorkbenchView = "documents" | "details" | "ai"
 
+type PendingWorkbenchSelection =
+    | { type: "collection"; id: number | null }
+    | { type: "document"; id: number | null }
+
 type ChatMessage = {
     id: number
     role: "user" | "assistant"
@@ -33,6 +37,8 @@ type WorkBenchState = {
     document: KnowledgeDocument | null
     documentLoading: boolean
     documentError: string | null
+    dirtyDocumentId: number | null
+    pendingSelection: PendingWorkbenchSelection | null
 
     //页面其他数据
     searchQuery: string
@@ -54,7 +60,7 @@ type WorkBenchState = {
 
     //选中的文档相关
     selectDocument: (id: number | null) => Promise<void>
-    loadDocument: (id: number) => Promise<void>
+    loadDocument: (id: number, showLoading?: boolean) => Promise<void>
 }
 
 const getErrorMessage = (error: unknown) =>
@@ -80,6 +86,8 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
     document: null,
     documentLoading: false,
     documentError: null,
+    dirtyDocumentId: null,
+    pendingSelection: null,
 
     searchQuery: "",
     messages: [
@@ -133,6 +141,8 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
                     document: null,
                     documentLoading: false,
                     documentError: null,
+                    dirtyDocumentId: null,
+                    pendingSelection: null,
                     searchQuery: "",
                 } : {})
             })
@@ -150,6 +160,10 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
     },
     selectCollection: async (selectedCollectionId) => {
         if (selectedCollectionId === get().selectedCollectionId) return
+        if (get().dirtyDocumentId !== null) {
+            set({pendingSelection: {type: "collection", id: selectedCollectionId}})
+            return
+        }
 
         documentRequestVersion++
         documentsRequestVersion++
@@ -164,6 +178,7 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             document: null,
             documentLoading: false,
             documentError: null,
+            pendingSelection: null,
             searchQuery: "",
             ...(selectedCollectionId === null ? {} : {activeView: "documents" as const})
         })
@@ -239,6 +254,8 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
                 document: null,
                 documentLoading: false,
                 documentError: null,
+                dirtyDocumentId: null,
+                pendingSelection: null,
             } : {}),
         }))
     },
@@ -249,12 +266,17 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             }
             return
         }
+        if (get().dirtyDocumentId !== null) {
+            set({pendingSelection: {type: "document", id: selectedDocumentId}})
+            return
+        }
         documentRequestVersion++
         set({
             selectedDocumentId,
             document: null,
             documentLoading: false,
             documentError: null,
+            pendingSelection: null,
 
             ...(selectedDocumentId === null ? {} : {activeView: "details" as const,}),
         })
@@ -263,12 +285,15 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             await get().loadDocument(selectedDocumentId,)
         }
     },
-    loadDocument: async (id) => {
+    loadDocument: async (id, showLoading = true) => {
         if (id !== get().selectedDocumentId) return
 
         const requestVersion = ++documentRequestVersion
 
-        set({documentLoading: true, documentError: null,})
+        set({
+            ...(showLoading ? {documentLoading: true} : {}),
+            documentError: null,
+        })
 
         try {
             const document = await getDocument(id)

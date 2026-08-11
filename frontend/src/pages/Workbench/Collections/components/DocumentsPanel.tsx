@@ -248,17 +248,15 @@ function DocumentListEmpty({title, description}: { title: string; description: s
 function getStatusMeta(status: string) {
     switch (status.toUpperCase()) {
         case "UPLOADED":
-            return {label: "已上传", className: "bg-marker-blue/10"}
-        case "PENDING":
-            return {label: "等待处理", className: "bg-kraft/35"}
-        case "PROCESSING":
-            return {label: "处理中", className: "bg-marker-yellow/65"}
-        case "READY":
-        case "COMPLETED":
-            return {label: "可用", className: "bg-marker-green/20"}
+            return {label: "待嵌入", className: "bg-marker-blue/10"}
+        case "PARSING":
+            return {label: "解析中", className: "bg-marker-yellow/65"}
+        case "PARSED":
+            return {label: "待写入向量", className: "bg-marker-yellow/35"}
+        case "EMBEDDED":
+            return {label: "已嵌入", className: "bg-marker-green/20"}
         case "FAILED":
-        case "ERROR":
-            return {label: "失败", className: "bg-marker-red/15"}
+            return {label: "处理失败", className: "bg-marker-red/15"}
         default:
             return {label: status || "未知", className: "bg-white/35"}
     }
