@@ -8,6 +8,7 @@ public record EditableDocumentVO(
         @Schema(description = "文档 ID") Long documentId,
         @Schema(description = "文档标题") String title,
         @Schema(description = "文档类型") DocumentType documentType,
-        @Schema(description = "文档原始文本内容") String content
+        @Schema(description = "文档原始文本内容") String content,
+        @Schema(description = "正文内容摘要") String contentHash
 ) {
 }

@@ -9,9 +9,7 @@ import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.rag.etl.EtlPipeline;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,13 +24,12 @@ public class ProposalService {
     private final Map<UUID, ProposalDTO> proposals = new ConcurrentHashMap<>();
 
     private final KnowledgeDocumentService knowledgeDocumentService;
+    private final EditableDocumentService editableDocumentService;
     private final EtlPipeline etlPipeline;
 
     /**
      * 创建一份“新建文档”提案。
-     *
-     * 此时只记录用户确认后准备执行的内容，
-     * 不会真正创建文档或写入文件。
+     * 此时只记录用户确认后准备执行的内容，不会真正创建文档或写入文件。
      */
     public ProposalDTO create(
             Long collectionId,
@@ -82,7 +79,7 @@ public class ProposalService {
             Long knowledgeDocumentId,
             String proposedContent
     ) {
-        EditableDocumentVO editableDocument = knowledgeDocumentService.readEditableDocument(collectionId, knowledgeDocumentId);
+        EditableDocumentVO editableDocument = editableDocumentService.read(collectionId, knowledgeDocumentId);
 
         if (editableDocument.content().equals(proposedContent)) {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "拟议内容与当前文档内容相同");
@@ -99,7 +96,7 @@ public class ProposalService {
                 .documentType(editableDocument.documentType())
                 .proposedContent(proposedContent)
                 .diff(buildDiff(editableDocument.content(), proposedContent))
-                .expectedContentHash(hash(editableDocument.content()))
+                .expectedContentHash(editableDocument.contentHash())
                 .status(ProposalDTO.Status.PENDING)
                 .createTime(LocalDateTime.now())
                 .build();
@@ -125,7 +122,7 @@ public class ProposalService {
     private KnowledgeDocument applyCreate(ProposalDTO proposalDTO) {
         //第一次应用时，提案还没有关联文档。此时创建物理文件和数据库记录。
         if (proposalDTO.knowledgeDocumentId() == null) {
-            KnowledgeDocument knowledgeDocument = knowledgeDocumentService.createEditableDocument(
+            KnowledgeDocument knowledgeDocument = editableDocumentService.create(
                     proposalDTO.knowledgeCollectionId(),
                     proposalDTO.title(),
                     proposalDTO.documentType(),
@@ -153,24 +150,12 @@ public class ProposalService {
     }
 
     private KnowledgeDocument applyUpdate(ProposalDTO proposalDTO) {
-        EditableDocumentVO editableDocument = knowledgeDocumentService.readEditableDocument(proposalDTO.knowledgeCollectionId(), proposalDTO.knowledgeDocumentId());
-
-        //如果当前摘要不一致，说明提案生成后文档又被修改过。
-        boolean unchanged = hash(editableDocument.content()).equals(proposalDTO.expectedContentHash());
-        //没有有效修改，跳过写入
-        boolean alreadyWritten = editableDocument.content().equals(proposalDTO.proposedContent());
-
-        if (!unchanged && !alreadyWritten) {
-            throw new BusinessException(ResultCode.PARAMS_ERROR, "文档已发生变化，请重新生成修改方案");
-        }
-
-        if (!alreadyWritten) {
-            knowledgeDocumentService.overwriteEditableDocument(
-                    proposalDTO.knowledgeCollectionId(),
-                    proposalDTO.knowledgeDocumentId(),
-                    proposalDTO.proposedContent()
-            );
-        }
+        editableDocumentService.update(
+                proposalDTO.knowledgeCollectionId(),
+                proposalDTO.knowledgeDocumentId(),
+                proposalDTO.expectedContentHash(),
+                proposalDTO.proposedContent()
+        );
 
         //etl文件
         KnowledgeDocument knowledgeDocument = etlPipeline.process(proposalDTO.knowledgeDocumentId());
@@ -206,19 +191,23 @@ public class ProposalService {
     }
 
     /**
-     * 计算当前内容的版本标识，用于后续写入前的并发检查。
-     */
-    private String hash(String content) {
-        return DigestUtils.md5DigestAsHex(content.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
      * 生成单区块文本 Diff，保留变化区域前后三行上下文。
      * 这不是完整的 Git Diff 算法，但足以支持当前的修改预览。
      */
     private String buildDiff(String currentContent, String proposedContent) {
-        List<String> currentLines = toLines(currentContent);
-        List<String> proposedLines = toLines(proposedContent);
+        //空字符串代表没有任何行，而不是包含一个空白行。
+        List<String> currentLines, proposedLines;
+        if (currentContent.isEmpty()) {
+            currentLines = List.of();
+        } else {
+            currentLines = Arrays.asList(currentContent.split("\\R", -1));
+        }
+
+        if (proposedContent.isEmpty()) {
+            proposedLines = List.of();
+        } else {
+            proposedLines = Arrays.asList(proposedContent.split("\\R", -1));
+        }
 
         int prefix = 0;
         while (prefix < currentLines.size()
@@ -267,16 +256,4 @@ public class ProposalService {
 
         return diff.toString();
     }
-
-    /**
-     * 空字符串代表没有任何行，而不是包含一个空白行。
-     */
-    private List<String> toLines(String content) {
-        if (content.isEmpty()) {
-            return List.of();
-        }
-
-        return Arrays.asList(content.split("\\R", -1));
-    }
-
 }

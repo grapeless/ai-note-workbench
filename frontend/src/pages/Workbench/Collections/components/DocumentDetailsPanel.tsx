@@ -1,6 +1,7 @@
 import {useState} from "react"
-import {AlertCircle, FileSearch, FileText, LoaderCircle, RefreshCw, Trash2} from "lucide-react"
+import {AlertCircle, ExternalLink, FileSearch, FileText, LoaderCircle, RefreshCw, Trash2} from "lucide-react"
 
+import {BASE_URL} from "@/api"
 import type {KnowledgeDocument} from "@/api/workbench/types"
 import {
     AlertDialog,
@@ -20,6 +21,7 @@ import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
 import {DOCUMENT_TYPE_LABEL} from "../types.ts"
+import {EditableDocumentContent} from "./EditableDocumentContent"
 
 const detailDateFormatter = new Intl.DateTimeFormat("zh-CN", {
     year: "numeric",
@@ -185,6 +187,41 @@ function DocumentMetadata({
                 </AlertDialog>
             </div>
 
+            {document.documentType === "PDF" ? (
+                <section className="border-b-2 border-ink py-7">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <h2 className="section-index">CONTENT / PDF PREVIEW</h2>
+                            <p className="mt-2 text-xs font-semibold text-ink/60">浏览器原生阅读器 / INLINE</p>
+                        </div>
+                        <a
+                            href={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-8 items-center gap-2 border-2 border-ink bg-paper px-3 text-xs font-black text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/30 active:translate-y-px active:shadow-none"
+                        >
+                            <ExternalLink className="size-3.5"/>
+                            新窗口打开
+                        </a>
+                    </div>
+
+                    <div className="mt-4 overflow-hidden border-2 border-ink bg-white shadow-[4px_4px_0_var(--kraft)]">
+                        <iframe
+                            key={`${document.collectionId}:${document.id}`}
+                            src={`${BASE_URL}/documents/${document.id}/pdf?collectionId=${document.collectionId}`}
+                            title={`${document.title} PDF 预览`}
+                            className="h-[72vh] min-h-[32rem] w-full bg-white"
+                        />
+                    </div>
+                </section>
+            ) : (
+                <EditableDocumentContent
+                    key={`${document.collectionId}:${document.id}`}
+                    collectionId={document.collectionId}
+                    documentId={document.id}
+                />
+            )}
+
             <section className="py-7" aria-labelledby="metadata-title">
                 <h2 id="metadata-title" className="section-index">01 / METADATA</h2>
                 <dl className="mt-4 grid border-l border-t border-ink/40 sm:grid-cols-2">
@@ -217,7 +254,7 @@ function DocumentMetadata({
                 <div className="tape-strip absolute -right-2 -top-2 h-6 w-16 rotate-3" aria-hidden="true"/>
                 <p className="text-xs font-black">当前范围 /</p>
                 <p className="mt-2 font-reading text-base">
-                    此处仅展示数据库中的文档元数据，暂不读取本地文件，也不渲染正文内容。
+                    Markdown 与 TXT 支持原文编辑和实时预览；PDF 使用浏览器原生阅读器展示本地源文件。
                 </p>
             </aside>
         </>

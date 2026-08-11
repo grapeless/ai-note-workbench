@@ -7,9 +7,9 @@ import com.lim.noteworkbench.mapper.KnowledgeDocumentMapper;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.enums.DocumentStatus;
 import com.lim.noteworkbench.model.enums.DocumentType;
-import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -55,67 +55,6 @@ public class KnowledgeDocumentService {
         }
     }
 
-    public EditableDocumentVO readEditableDocument(Long knowledgeCollectionId, Long knowledgeDocumentId) {
-        KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
-
-        if (!knowledgeDocument.getDocumentType().isEditable()) {
-            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本编辑");
-        }
-
-        return new EditableDocumentVO(knowledgeDocument.getId(),
-                knowledgeDocument.getTitle(),
-                knowledgeDocument.getDocumentType(),
-                storageService.readText(knowledgeDocument.getSourcePath())
-        );
-    }
-
-    public void overwriteEditableDocument(Long knowledgeCollectionId, Long knowledgeDocumentId, String content) {
-        KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
-
-        if (!knowledgeDocument.getDocumentType().isEditable()) {
-            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本编辑");
-        }
-
-        storageService.writeText(knowledgeDocument.getSourcePath(), content);
-
-        //更改状态，之后需要重新嵌入
-        updateStatus(knowledgeDocumentId, DocumentStatus.UPLOADED, null);
-    }
-
-    @Transactional
-    public KnowledgeDocument createEditableDocument(
-            Long knowledgeCollectionId,
-            String title,
-            DocumentType documentType,
-            String content
-    ) {
-        if (!documentType.isEditable()) {
-            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档类型不支持文本创建");
-        }
-
-        //创建文件
-        String sourcePath = storageService.createText(knowledgeCollectionId, documentType, content);
-
-        try {
-            //文件创建成功后，再保存数据库元数据。此时只代表文档已经写入存储，还没有执行解析和向量化，因此初始状态为 UPLOADED。
-            KnowledgeDocument knowledgeDocument = KnowledgeDocument.builder()
-                    .collectionId(knowledgeCollectionId)
-                    .title(title)
-                    .sourcePath(sourcePath)
-                    .documentType(documentType)
-                    .status(DocumentStatus.UPLOADED.name())
-                    .errorMessage(null)
-                    .build();
-
-            knowledgeDocumentMapper.insert(knowledgeDocument);
-            return knowledgeDocumentMapper.findById(knowledgeDocument.getId());
-        } catch (RuntimeException e) {
-            //数据库插入失败时，删除刚刚创建的物理文件，避免存储目录中出现没有数据库记录的孤立文件。
-            storageService.delete(sourcePath);
-            throw e;
-        }
-    }
-
     public KnowledgeDocument getById(Long id) {
         KnowledgeDocument document = knowledgeDocumentMapper.findById(id);
 
@@ -152,6 +91,15 @@ public class KnowledgeDocumentService {
 
     public void updateStatus(Long id, DocumentStatus status, String errorMessage) {
         knowledgeDocumentMapper.updateStatus(id, status.name(), errorMessage);
+    }
+
+    public Resource loadPdf(Long knowledgeCollectionId, Long knowledgeDocumentId) {
+        KnowledgeDocument knowledgeDocument = getByIdInCollection(knowledgeCollectionId, knowledgeDocumentId);
+
+        if (knowledgeDocument.getDocumentType() != DocumentType.PDF)
+            throw new BusinessException(ResultCode.PARAMS_ERROR, "该文档不是 PDF");
+
+        return storageService.load(knowledgeDocument.getSourcePath());
     }
 
     /**

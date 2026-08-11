@@ -5,7 +5,7 @@ import com.lim.noteworkbench.model.dto.ProposalDTO;
 import com.lim.noteworkbench.model.enums.DocumentType;
 import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.model.vo.ProposalVO;
-import com.lim.noteworkbench.service.KnowledgeDocumentService;
+import com.lim.noteworkbench.service.EditableDocumentService;
 import com.lim.noteworkbench.service.ProposalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.model.ToolContext;
@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WritingTools {
 
-    private final KnowledgeDocumentService knowledgeDocumentService;
+    private final EditableDocumentService editableDocumentService;
     private final ProposalService proposalService;
 
     @Tool(description = """
@@ -33,7 +33,7 @@ public class WritingTools {
             ToolContext toolContext
     ) {
         Long collectionId = (Long) toolContext.getContext().get(AgentToolContextKey.COLLECTION_ID);
-        return knowledgeDocumentService.readEditableDocument(collectionId, documentId);
+        return editableDocumentService.read(collectionId, documentId);
     }
 
     @Tool(description = """

@@ -10,6 +10,7 @@ export interface KnowledgeCollection {
 
 export type DocumentType = 'PDF' | 'PLAIN_TEXT' | 'MARKDOWN'
 
+//todo 这两个类型真的好吗
 export interface KnowledgeDocument {
     id: number
     collectionId: number
@@ -20,6 +21,19 @@ export interface KnowledgeDocument {
     errorMessage: string | null
     createTime: string
     updateTime: string
+}
+
+export interface EditableDocument {
+    documentId: number
+    title: string
+    documentType: Exclude<DocumentType, 'PDF'>
+    content: string
+    contentHash: string
+}
+
+export interface UpdateEditableDocumentRequest {
+    expectedContentHash: string
+    content: string
 }
 
 export interface ChatRequest {

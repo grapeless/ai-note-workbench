@@ -1,15 +1,21 @@
 package com.lim.noteworkbench.controller;
 
 import com.lim.noteworkbench.common.response.Result;
+import com.lim.noteworkbench.model.dto.UpdateEditableDocumentDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
+import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.rag.etl.EtlPipeline;
+import com.lim.noteworkbench.service.EditableDocumentService;
 import com.lim.noteworkbench.service.KnowledgeDocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class KnowledgeDocumentController {
     private final KnowledgeDocumentService knowledgeDocumentService;
+    private final EditableDocumentService editableDocumentService;
     private final EtlPipeline etlPipeline;
 
     @Operation(summary = "上传文档")
@@ -65,4 +72,34 @@ public class KnowledgeDocumentController {
         knowledgeDocumentService.delete(id);
         return Result.success();
     }
+
+    @Operation(summary = "读取可编辑类型文档的正文")
+    @GetMapping("/{id}/content")
+    public Result<EditableDocumentVO> getEditableContent(Long collectionId, @PathVariable Long id) {
+        return Result.success(editableDocumentService.read(collectionId, id));
+    }
+
+    @Operation(summary = "修改文档内容")
+    @PutMapping("/{id}/content")
+    public Result<EditableDocumentVO> updateEditableContent(
+            Long collectionId,
+            @PathVariable Long id,
+            @RequestBody UpdateEditableDocumentDTO updateEditableDocumentDTO
+    ) {
+        return Result.success(editableDocumentService.update(collectionId, id,
+                updateEditableDocumentDTO.expectedContentHash(),
+                updateEditableDocumentDTO.content()
+        ));
+    }
+
+    //todo 值得学习的一个接口
+    @Operation(summary = "预览不可修改类型文档（目前只有PDF）")
+    @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<Resource> previewPdf(Long collectionId, @PathVariable Long id) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .body(knowledgeDocumentService.loadPdf(collectionId, id));
+    }
+
 }
