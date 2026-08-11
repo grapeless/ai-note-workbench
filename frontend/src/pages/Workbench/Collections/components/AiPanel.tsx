@@ -119,7 +119,9 @@ const applyChatResponse = (chatMessages: ChatMessage[], assistantMessageId: stri
             return {
                 ...chatMessage,
                 reasoningContent: chatMessage.reasoningContent + chatResponse.content,
-                reasoningOpen: true
+                reasoningOpen: chatMessage.reasoningContent.length === 0
+                    ? true
+                    : chatMessage.reasoningOpen
             }
         }
         //追加到回复
@@ -327,10 +329,15 @@ function AiPanel() {
         })
             .then(() => listChatMessages(conversationId))
             .then(historyMessages => {
-                const citations = historyMessages.find(message => message.id === assistantMessageId)?.citations ?? []
+                const historyMessage = historyMessages.find(message => message.id === assistantMessageId)!
                 setChatMessages(current => current.map(message =>
                     message.role === "assistant" && message.id === assistantMessageId
-                        ? {...message, citations}
+                        ? {
+                            ...message,
+                            content: historyMessage.content,
+                            reasoningContent: historyMessage.reasoningContent ?? "",
+                            citations: historyMessage.citations
+                        }
                         : message
                 ))
             })

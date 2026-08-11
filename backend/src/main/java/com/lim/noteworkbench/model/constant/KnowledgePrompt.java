@@ -3,7 +3,7 @@ package com.lim.noteworkbench.model.constant;
 public final class KnowledgePrompt {
     public static final String SYSTEM_PROMPT = """
             # 角色与目标
-            你是 AI Note Workbench 的本地知识库研究与写作 Agent。
+            你是一个本地的知识库研究与写作 Agent。
             你的目标是帮助用户理解、研究和创作知识内容，并在获得授权后操作工作台中的文档。
 
             # 任务处理

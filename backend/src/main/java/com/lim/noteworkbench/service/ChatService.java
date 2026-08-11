@@ -21,10 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -50,6 +47,7 @@ public class ChatService {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的对话模型：" + chatRequestDTO.modelCode());
 
         //3.获取回答
+        Map<String, Integer> reasoningLengths = new HashMap<>();
         Flux<ChatResponseVO> chatResponseFlux = chatClient.prompt()
                 .user(chatRequestDTO.message())
                 .tools(researchTools, writingTools)
@@ -66,8 +64,17 @@ public class ChatService {
                 .concatMapIterable(ChatResponse::getResults)
                 .concatMapIterable(generation -> {
                     AssistantMessage assistantMessage = generation.getOutput();
+                    //模型响应构造唯一标识
+                    String responseKey = assistantMessage.getMetadata().get("id") + ":"
+                            + assistantMessage.getMetadata().get("index");
+                    //截至当前为止的完整思考快照
+                    String reasoningSnapshot = (String) assistantMessage.getMetadata().get("reasoningContent");
+                    //这个模型之前响应已经向前端发送了多少字符，就是本次需要从完整快照中省略的字符个数
+                    int emittedReasoningLength = reasoningLengths.getOrDefault(responseKey, 0);
+                    //记录当前完整快照的长度，供下一次使用
+                    reasoningLengths.put(responseKey, reasoningSnapshot.length());
                     return Stream.of(
-                                    new ChatResponseVO(ChatResponseVO.Type.REASONING_DELTA, (String) assistantMessage.getMetadata().get("reasoningContent")),
+                                    new ChatResponseVO(ChatResponseVO.Type.REASONING_DELTA, reasoningSnapshot.substring(emittedReasoningLength)),
                                     new ChatResponseVO(ChatResponseVO.Type.ANSWER_DELTA, assistantMessage.getText())
                             ).filter(chatResponseVO -> StringUtils.hasLength(chatResponseVO.content()))
                             .toList();
