@@ -200,7 +200,7 @@ export function EditableDocumentContent({collectionId, documentId}: { collection
                     )}
 
                     {(mode === "edit" || mode === "split") && (
-                        <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-ink/35 bg-paper/70 px-3 py-3">
+                        <div className="sticky bottom-0 z-20 flex flex-wrap items-center gap-2 border-t border-dashed border-ink/35 bg-paper px-3 py-3 shadow-[0_-3px_0_var(--kraft)]">
                             <p className={cn(
                                 "mr-auto text-xs font-semibold text-ink/60",
                                 saveError && "font-bold text-marker-red"

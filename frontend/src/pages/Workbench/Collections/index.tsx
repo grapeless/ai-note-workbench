@@ -1,3 +1,4 @@
+import {useState} from "react"
 import {FileSearch, List, MessageSquareText} from "lucide-react"
 import {useDefaultLayout} from "react-resizable-panels"
 
@@ -86,6 +87,8 @@ function CollectionsViewNav() {
 }
 
 function CollectionsDesktopLayout() {
+    const [documentsCollapsed, setDocumentsCollapsed] = useState(false)
+    const [aiCollapsed, setAiCollapsed] = useState(false)
     const {defaultLayout, onLayoutChanged} = useDefaultLayout({
         id: "workbench-content-layout",
         panelIds: contentPanelIds,
@@ -104,11 +107,14 @@ function CollectionsDesktopLayout() {
                 defaultSize="24%"
                 minSize={220}
                 maxSize={380}
+                collapsible
+                collapsedSize={0}
+                onResize={({inPixels}) => setDocumentsCollapsed(inPixels === 0)}
             >
                 <DocumentsPanel/>
             </ResizablePanel>
 
-            <ResizableHandle withHandle/>
+            <ResizableHandle withHandle collapsed={documentsCollapsed}/>
 
             <ResizablePanel
                 id="details"
@@ -118,13 +124,16 @@ function CollectionsDesktopLayout() {
                 <DocumentDetailsPanel/>
             </ResizablePanel>
 
-            <ResizableHandle withHandle/>
+            <ResizableHandle withHandle collapsed={aiCollapsed}/>
 
             <ResizablePanel
                 id="ai"
                 defaultSize="30%"
                 minSize={280}
                 maxSize={550}
+                collapsible
+                collapsedSize={0}
+                onResize={({inPixels}) => setAiCollapsed(inPixels === 0)}
             >
                 <AiPanel/>
             </ResizablePanel>

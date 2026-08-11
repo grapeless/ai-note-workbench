@@ -260,6 +260,17 @@ function CollectionItems({
     onRetry: () => void
     onSelect: (id: number) => void
 }) {
+    const documents = useWorkbenchStore((state) => state.documents)
+    const selectedDocumentId = useWorkbenchStore((state) => state.selectedDocumentId)
+    const documentsLoading = useWorkbenchStore((state) => state.documentsLoading)
+    const documentsError = useWorkbenchStore((state) => state.documentsError)
+    const selectDocument = useWorkbenchStore((state) => state.selectDocument)
+    const [expandedCollectionId, setExpandedCollectionId] = useState<number | null>(selectedCollectionId)
+
+    useEffect(() => {
+        if (active) setExpandedCollectionId(selectedCollectionId)
+    }, [active, selectedCollectionId])
+
     if (loading && collections.length === 0) {
         return (
             <>
@@ -316,35 +327,97 @@ function CollectionItems({
         )
     }
 
-    return collections.map((collection) => (
-        <SidebarMenuSubItem key={collection.id}>
-            <SidebarMenuSubButton
-                render={
-                    <button
-                        type="button"
-                        aria-pressed={collection.id === selectedCollectionId}
-                        onClick={() => onSelect(collection.id)}
-                    />
-                }
-                isActive={active && collection.id === selectedCollectionId}
-                className={cn(
-                    "h-auto min-h-[4.5rem] py-3",
-                    nestedMenuStateClassName,
-                )}
-            >
-                <span className="grid size-8 shrink-0 place-items-center border border-ink/40 bg-paper-warm">
-                    <Box strokeWidth={1.75} className="size-4!" aria-hidden="true"/>
-                </span>
-                <span className="min-w-0 flex-1 text-left">
-                    <span className="block truncate text-[13px] font-bold leading-5">{collection.name}</span>
-                    {collection.description && (
-                        <span className="mt-0.5 block line-clamp-2 text-xs font-normal leading-4 text-pencil">
-                            {collection.description}
-                        </span>
+    return collections.map((collection) => {
+        const selected = collection.id === selectedCollectionId
+        const expanded = active && selected && expandedCollectionId === collection.id
+
+        return (
+            <SidebarMenuSubItem key={collection.id}>
+                <SidebarMenuSubButton
+                    render={
+                        <button
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => {
+                                if (active && selected) {
+                                    setExpandedCollectionId(expanded ? null : collection.id)
+                                    return
+                                }
+
+                                setExpandedCollectionId(collection.id)
+                                onSelect(collection.id)
+                            }}
+                        />
+                    }
+                    isActive={active && selected}
+                    className={cn(
+                        "h-auto min-h-[4.5rem] py-3",
+                        nestedMenuStateClassName,
                     )}
-                </span>
-                <ChevronRight className="ml-auto size-4! shrink-0 text-pencil" aria-hidden="true"/>
-            </SidebarMenuSubButton>
-        </SidebarMenuSubItem>
-    ))
+                >
+                    <span className="grid size-8 shrink-0 place-items-center border border-ink/40 bg-paper-warm">
+                        <Box strokeWidth={1.75} className="size-4!" aria-hidden="true"/>
+                    </span>
+                    <span className="min-w-0 flex-1 text-left">
+                        <span className="block truncate text-[13px] font-bold leading-5">{collection.name}</span>
+                        {collection.description && (
+                            <span className="mt-0.5 block line-clamp-2 text-xs font-normal leading-4 text-pencil">
+                                {collection.description}
+                            </span>
+                        )}
+                    </span>
+                    <ChevronRight
+                        className={cn(
+                            "ml-auto size-4! shrink-0 text-pencil transition-transform duration-150 motion-reduce:transition-none",
+                            expanded && "rotate-90",
+                        )}
+                        aria-hidden="true"
+                    />
+                </SidebarMenuSubButton>
+
+                {expanded && (
+                    <div className="mt-1 border-x border-b border-ink/25 bg-paper-warm/70 px-2 pb-2 pt-3">
+                        <div className="flex items-center gap-2 px-1 pb-2 text-[9px] font-black tracking-[0.14em] text-pencil">
+                            <span>DOCUMENTS</span>
+                            <span className="h-px flex-1 bg-ink/20" aria-hidden="true"/>
+                            <span className="tabular-nums">{documents.length}</span>
+                        </div>
+
+                        {documentsLoading && documents.length === 0 ? (
+                            <p className="flex items-center gap-2 px-2 py-3 text-xs font-semibold text-pencil">
+                                <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true"/>
+                                正在加载文档…
+                            </p>
+                        ) : documentsError ? (
+                            <p className="px-2 py-3 text-xs font-semibold text-marker-red">文档列表加载失败</p>
+                        ) : documents.length === 0 ? (
+                            <p className="px-2 py-3 font-reading text-xs italic text-pencil">暂无文档</p>
+                        ) : (
+                            <ul className="panel-scroll max-h-56 overflow-y-auto border-y border-ink/20 bg-paper/75">
+                                {documents.map((document) => (
+                                    <li key={document.id} className="last:[&>button]:border-b-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => void selectDocument(document.id)}
+                                            className={cn(
+                                                "flex min-h-10 w-full cursor-pointer items-center gap-2 border-b border-ink/15 px-2 py-2 text-left text-xs hover:bg-kraft/20",
+                                                document.id === selectedDocumentId && "bg-marker-yellow/35 font-black shadow-[inset_3px_0_0_var(--marker-blue)] hover:bg-marker-yellow/45",
+                                            )}
+                                        >
+                                            <span className="min-w-8 shrink-0 border border-ink/35 bg-paper px-1 py-0.5 text-center font-mono text-[9px] font-black">
+                                                {document.documentType === "MARKDOWN"
+                                                    ? "MD"
+                                                    : document.documentType === "PLAIN_TEXT" ? "TXT" : "PDF"}
+                                            </span>
+                                            <span className="min-w-0 flex-1 truncate">{document.title}</span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
+            </SidebarMenuSubItem>
+        )
+    })
 }

@@ -47,11 +47,11 @@ export function DocumentDetailsPanel() {
     return (
         <section
             id="document-content"
-            className="panel-scroll h-full min-h-0 overflow-y-auto bg-paper px-5 py-6 sm:px-8"
+            className="panel-scroll h-full min-h-0 overflow-y-auto bg-paper px-5 pt-6 sm:px-8"
             tabIndex={-1}
             aria-busy={documentLoading}
         >
-            <article className="mx-auto max-w-3xl" aria-live="polite">
+            <article className="mx-auto w-full max-w-6xl" aria-live="polite">
                 {selectedDocumentId === null ? (<DocumentDetailEmpty/>)
                     : documentLoading
                     ? (<DocumentDetailLoading/>)
