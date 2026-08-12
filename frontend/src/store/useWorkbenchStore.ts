@@ -26,12 +26,6 @@ type PendingWorkbenchSelection =
     | { type: "document"; id: number | null }
     | { type: "citation"; citation: ChatCitation }
 
-type ChatMessage = {
-    id: number
-    role: "user" | "assistant"
-    content: string
-}
-
 //todo 重构一下store，拆分一下
 type WorkBenchState = {
     //===============data==============
@@ -60,7 +54,6 @@ type WorkBenchState = {
 
     //页面其他数据
     searchQuery: string
-    messages: ChatMessage[]
 
     //===============action==============
     //
@@ -115,19 +108,6 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
     activeCitation: null,
 
     searchQuery: "",
-    messages: [
-        {
-            id: 1,
-            role: "user",
-            content: "这个 MVP 最应该先验证什么？",
-        },
-        {
-            id: 2,
-            role: "assistant",
-            content:
-                "先验证“用户能否快速得到可信答案”。建议把成功标准压缩为三件事：导入后 1 分钟内可搜索、回答命中真正相关片段、每条结论都能打开原始来源。",
-        },
-    ],
 
     setActiveView: (activeView) => set({activeView}),
     setSearchQuery: (searchQuery) => set({searchQuery}),

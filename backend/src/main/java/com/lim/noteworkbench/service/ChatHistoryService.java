@@ -79,6 +79,11 @@ public class ChatHistoryService {
     }
 
     @Transactional
+    public void cancelTurn(UUID conversationId, UUID assistantMessageId, String reasoningContent, String content) {
+        finishTurn(conversationId, assistantMessageId, reasoningContent, content, ChatMessageStatus.CANCELLED);
+    }
+
+    @Transactional
     public void completeTurn(UUID conversationId, UUID assistantMessageId, String reasoningContent, String content) {
         finishTurn(conversationId, assistantMessageId, reasoningContent, content, ChatMessageStatus.COMPLETED);
     }

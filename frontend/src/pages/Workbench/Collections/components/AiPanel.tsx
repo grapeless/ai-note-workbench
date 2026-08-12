@@ -11,25 +11,11 @@ import {
     Sparkles,
     Trash2,
 } from "lucide-react"
+import {useShallow} from "zustand/react/shallow"
 import {cn} from "@/lib/utils"
-import {
-    applyProposal,
-    clearChatConversations,
-    deleteChatConversation,
-    listChatConversations,
-    listChatMessages,
-    listChatModels,
-    listProposals,
-    sendChatMessage,
-} from "@/api/workbench/chat"
-import type {
-    ChatCitation,
-    ChatConversation,
-    ChatResponse,
-    HistoryChatMessage,
-    ModelProvider,
-    Proposal
-} from "@/api/workbench/types"
+import {applyProposal, listChatModels, listProposals,} from "@/api/workbench/chat"
+import type {ModelProvider, Proposal} from "@/api/workbench/types"
+import {useChatStore} from "@/store/useChatStore"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore.ts";
 import {Button} from "@/components/ui/button"
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible"
@@ -42,55 +28,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {Spinner} from "@/components/ui/spinner"
 import {Textarea} from "@/components/ui/textarea"
 import {CitationMarkdownContent} from "./CitationMarkdownContent"
 import {MessageCitations} from "./MessageCitations"
 import {ProposalCard} from "./ProposalCard"
-
-interface UserChatMessage {
-    /**
-     * React 渲染和流式更新时用于定位消息
-     */
-    id: string
-    role: 'user'
-    /**
-     * 用户消息内容
-     */
-    content: string
-}
-
-interface AssistantChatMessage {
-    /**
-     * React 渲染和流式更新时用于定位消息
-     */
-    id: string
-    role: 'assistant'
-    /**
-     * 模型的思考内容
-     */
-    reasoningContent: string
-    /**
-     * 思考过程折叠区域是否展开。
-     */
-    reasoningOpen: boolean
-    /**
-     * 这条 AI 消息是否还在接收流式数据。
-     */
-    streaming: boolean
-    /**
-     * 最终回答。
-     */
-    content: string
-    /**
-     * 回答引用的结构化来源。
-     */
-    citations: ChatCitation[]
-}
-
-/**
- * 一条对话消息
- */
-type ChatMessage = UserChatMessage | AssistantChatMessage
 
 interface SelectedChatModel {
     providerCode: string
@@ -103,73 +45,7 @@ const modelMenuPopupClass = "z-50 max-h-(--available-height) min-w-52 overflow-y
 
 const modelMenuItemClass = "flex min-w-0 cursor-default items-center gap-2 px-3 py-2 text-sm font-bold outline-none select-none data-highlighted:bg-marker-yellow/60"
 
-/**
- * 追加消息
- * @param chatMessages 当前消息数组
- * @param assistantMessageId 正在生成的AI回复的ID
- * @param chatResponse 后端刚推送的一小段内容
- */
-const applyChatResponse = (chatMessages: ChatMessage[], assistantMessageId: string, chatResponse: ChatResponse) =>
-    //使用map返回新对象
-    chatMessages.map(chatMessage => {
-        //只对现在正在生成的助手消息追加
-        if (chatMessage.role !== "assistant" || chatMessage.id !== assistantMessageId) return chatMessage
-        //追加到思考内容
-        if (chatResponse.type === "REASONING_DELTA") {
-            return {
-                ...chatMessage,
-                reasoningContent: chatMessage.reasoningContent + chatResponse.content,
-                reasoningOpen: chatMessage.reasoningContent.length === 0
-                    ? true
-                    : chatMessage.reasoningOpen
-            }
-        }
-        //追加到回复
-        return {
-            ...chatMessage,
-            // 表示收到第一段正式回答时，因为原来的 content 还是空字符串，所以自动收起思考过程；
-            // 之后继续接收正文时，保持用户当前的展开/收起状态。
-            reasoningOpen: chatMessage.content.length === 0 ? false : chatMessage.reasoningOpen,
-            content: chatMessage.content + chatResponse.content
-        }
-    })
-
-const toChatMessage = (historyChatMessage: HistoryChatMessage): ChatMessage => {
-    if (historyChatMessage.role === "USER") {
-        return {
-            id: historyChatMessage.id,
-            role: "user",
-            content: historyChatMessage.content
-        }
-    }
-    return {
-        id: historyChatMessage.id,
-        role: "assistant",
-        reasoningContent: historyChatMessage.reasoningContent ?? "",
-        reasoningOpen: false,
-        streaming: false,
-        content: historyChatMessage.content,
-        citations: historyChatMessage.citations ?? [],
-    }
-}
-
-/**
- * 找到对应AI消息，将其streaming改为false。
- */
-const finishChatMessage = (messages: ChatMessage[], assistantMessageId: string) =>
-    messages.map(message =>
-        message.role === "assistant" && message.id === assistantMessageId
-            ? {...message, streaming: false}
-            : message
-    )
-
 function AiPanel() {
-    //当前界面展示的会话
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-    //当前会话ID，后端使用其从Redis中找到之前的上下文
-    const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
-    //历史会话列表
-    const [chatHistoryList, setChatHistoryList] = useState<ChatConversation[]>([])
     //用户输入
     const [draft, setDraft] = useState("")
     //可用模型列表
@@ -178,9 +54,6 @@ function AiPanel() {
     const [selectedModel, setSelectedModel] = useState<SelectedChatModel | null>(null)
     //模型加载状态
     const [modelLoading, setModelLoading] = useState(true)
-    //请求状态
-    const [sending, setSending] = useState(false)
-    const [messagesLoading, setMessagesLoading] = useState(false)
     const [proposals, setProposals] = useState<Proposal[]>([])
     const [proposalsLoading, setProposalsLoading] = useState(false)
     const [proposalReloadVersion, setProposalReloadVersion] = useState(0)
@@ -192,6 +65,57 @@ function AiPanel() {
     const refreshDocuments = useWorkbenchStore(state => state.refreshDocuments)
     const loadDocument = useWorkbenchStore(state => state.loadDocument)
     const openCitation = useWorkbenchStore(state => state.openCitation)
+    const {
+        conversationId,
+        chatMessages = [],
+        chatHistoryList = [],
+        messagesLoading,
+        sending,
+        stopping,
+        generationVersion,
+        sessionError,
+        runningConversationIds,
+        collectionHasRunningConversation,
+    } = useChatStore(useShallow(state => {
+        const conversationId = selectedCollectionId === null ? null : state.activeConversationIdByCollection[selectedCollectionId] ?? null
+        const session = conversationId === null ? undefined : state.sessions[conversationId]
+        return {
+            conversationId,
+            chatMessages: session?.messages,
+            chatHistoryList: selectedCollectionId === null ? undefined : state.conversationsByCollection[selectedCollectionId],
+            messagesLoading: selectedCollectionId !== null && (state.collectionLoading[selectedCollectionId] || session?.messagesLoading === true),
+            sending: session?.activeAssistantMessageId != null,
+            stopping: session?.stopping === true,
+            generationVersion: session?.generationVersion ?? 0,
+            sessionError: session?.error ?? null,
+            runningConversationIds: state.runningConversationIds,
+            collectionHasRunningConversation: selectedCollectionId !== null
+                && Object.keys(state.runningConversationIds).some(
+                    runningConversationId => state.sessions[runningConversationId]?.collectionId === selectedCollectionId
+                ),
+        }
+    }))
+    const {
+        loadCollection,
+        startConversation,
+        openConversation,
+        sendMessage,
+        stopGeneration,
+        setReasoningOpen,
+        clearError: clearSessionError,
+        deleteConversation,
+        clearConversations,
+    } = useChatStore(useShallow(state => ({
+        loadCollection: state.loadCollection,
+        startConversation: state.startConversation,
+        openConversation: state.openConversation,
+        sendMessage: state.sendMessage,
+        stopGeneration: state.stopGeneration,
+        setReasoningOpen: state.setReasoningOpen,
+        clearError: state.clearError,
+        deleteConversation: state.deleteConversation,
+        clearConversations: state.clearConversations,
+    })))
 
     //页面加载时加载可用模型列表
     useEffect(() => {
@@ -221,46 +145,12 @@ function AiPanel() {
             .finally(() => setModelLoading(false))
     }, [])
 
-    //切换知识库时加载最近会话，没有历史记录则开始新会话
+    //切换知识库时恢复该知识库上次打开的会话；流式任务由全局 Store 继续持有。
     useEffect(() => {
-        let cancelled = false
-
-        setConversationId(crypto.randomUUID())
-        setChatMessages([])
-        setChatHistoryList([])
+        setDraft("")
         setError(null)
-        if (selectedCollectionId === null) {
-            setMessagesLoading(false)
-            return
-        }
-
-        setMessagesLoading(true)
-
-        listChatConversations(selectedCollectionId)
-            .then(conversations => {
-                if (cancelled) return []
-
-                setChatHistoryList(conversations)
-
-                if (conversations.length === 0) return []
-
-                setConversationId(conversations[0].id)
-                return listChatMessages(conversations[0].id)
-            })
-            .then(messages => {
-                if (!cancelled) setChatMessages(messages.map(toChatMessage))
-            })
-            .catch(error => {
-                if (!cancelled) setError(getErrorMessage(error))
-            })
-            .finally(() => {
-                if (!cancelled) setMessagesLoading(false)
-            })
-
-        return () => {
-            cancelled = true
-        }
-    }, [selectedCollectionId]);
+        if (selectedCollectionId !== null) void loadCollection(selectedCollectionId)
+    }, [selectedCollectionId, loadCollection]);
 
     //切换会话时先移除上一个会话的提案。
     useEffect(() => {
@@ -270,6 +160,11 @@ function AiPanel() {
 
     //提案只属于当前会话；切换会话或完成一次变更后重新读取。
     useEffect(() => {
+        if (conversationId === null) {
+            setProposalsLoading(false)
+            return
+        }
+
         let cancelled = false
 
         setProposalsLoading(true)
@@ -288,10 +183,10 @@ function AiPanel() {
         return () => {
             cancelled = true
         }
-    }, [conversationId, proposalReloadVersion])
+    }, [conversationId, proposalReloadVersion, generationVersion])
 
     const applyDocumentProposal = (proposal: Proposal) => {
-        if (proposal.status === "APPLIED" || applyingProposalId !== null) return
+        if (proposal.status === "APPLIED" || applyingProposalId !== null || conversationId === null) return
 
         setApplyingProposalId(proposal.proposalId)
         setError(null)
@@ -316,69 +211,19 @@ function AiPanel() {
         if (!content || sending || messagesLoading) return
 
         //改为禁用按钮而不是抛出异常
-        if (!selectedModel || selectedCollectionId === null) return
-
-        const assistantMessageId = crypto.randomUUID()
-
-        //生成新的消息数组：旧消息+ 本次用户消息+ 一条空的 AI 消息
-        const nextMessages: ChatMessage[] = [
-            ...chatMessages,
-            {
-                id: crypto.randomUUID(),
-                role: "user",
-                content
-            },
-            {
-                id: assistantMessageId,
-                role: "assistant",
-                reasoningContent: "",
-                reasoningOpen: true,
-                streaming: true,
-                content: "",
-                citations: [],
-            }
-        ]
-        setChatMessages(nextMessages)
+        if (!selectedModel || selectedCollectionId === null || conversationId === null) return
 
         setDraft("")
-        setSending(true)
         setError(null)
-
-        sendChatMessage({
+        clearSessionError(conversationId)
+        sendMessage({
             collectionId: selectedCollectionId,
+            conversationId,
             providerCode: selectedModel.providerCode,
             modelCode: selectedModel.modelCode,
             message: content,
-            conversationId,
-            assistantMessageId,
             selectedDocumentId
-        }, chatResponse => {
-            //每收到一个流式事件就执行一次
-            setChatMessages(current => applyChatResponse(current, assistantMessageId, chatResponse))
         })
-            .then(() => listChatMessages(conversationId))
-            .then(historyMessages => {
-                const historyMessage = historyMessages.find(message => message.id === assistantMessageId)!
-                setChatMessages(current => current.map(message =>
-                    message.role === "assistant" && message.id === assistantMessageId
-                        ? {
-                            ...message,
-                            content: historyMessage.content,
-                            reasoningContent: historyMessage.reasoningContent ?? "",
-                            citations: historyMessage.citations
-                        }
-                        : message
-                ))
-            })
-            .catch(error => setError(getErrorMessage(error)))
-            .finally(() => {
-                setChatMessages(current => finishChatMessage(current, assistantMessageId))
-                setSending(false)
-                setProposalReloadVersion(current => current + 1)
-                listChatConversations(selectedCollectionId)
-                    .then(setChatHistoryList)
-                    .catch(error => setError(getErrorMessage(error)))
-            })
     }
 
     return (
@@ -394,10 +239,10 @@ function AiPanel() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={sending || messagesLoading}
+                        disabled={messagesLoading || selectedCollectionId === null}
                         onClick={() => {
-                            setConversationId(crypto.randomUUID())
-                            setChatMessages([])
+                            if (selectedCollectionId === null) return
+                            startConversation(selectedCollectionId)
                             setDraft('')
                             setError(null)
                         }}
@@ -410,7 +255,7 @@ function AiPanel() {
                     <DropdownMenu>
                         <DropdownMenuTrigger
                             type="button"
-                            disabled={sending || messagesLoading}
+                            disabled={messagesLoading || selectedCollectionId === null}
                             title="历史对话"
                             className="flex size-9 rotate-[-0.4deg] items-center justify-center border-2 border-ink bg-paper shadow-[2px_2px_0_var(--kraft)] outline-none transition-none hover:bg-marker-yellow/35 disabled:opacity-50 data-popup-open:bg-marker-yellow/35"
                         >
@@ -435,79 +280,68 @@ function AiPanel() {
                                     </DropdownMenuItem>
                                 )}
 
-                                {chatHistoryList.map(conversation => (
-                                    <DropdownMenuItem
-                                        key={conversation.id}
-                                        title={conversation.title}
-                                        onClick={() => {
-                                            setConversationId(conversation.id)
-                                            setChatMessages([])
-                                            setDraft("")
-                                            setError(null)
-                                            setMessagesLoading(true)
+                                {chatHistoryList.map(conversation => {
+                                    const generating = runningConversationIds[conversation.id]
 
-                                            listChatMessages(conversation.id)
-                                                .then(messages => setChatMessages(messages.map(toChatMessage)))
-                                                .catch(error => setError(getErrorMessage(error)))
-                                                .finally(() => setMessagesLoading(false))
-                                        }}
-                                        className={cn(
-                                            "grid grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] gap-2 rounded-none border-b border-ink/15 px-2 py-2.5 data-highlighted:bg-marker-yellow/45",
-                                            conversation.id === conversationId && "bg-marker-yellow/65",
-                                        )}
-                                    >
-                                        <span className="flex size-7 items-center justify-center border border-ink/30 bg-paper">
-                                            <MessageCircle className="size-3.5"/>
-                                        </span>
-                                        <span className="min-w-0">
-                                            <span className="block truncate text-xs font-black">{conversation.title}</span>
-                                            <span className="mt-0.5 block font-mono text-[10px] text-ink/50">
-                                                  {new Date(conversation.updateTime).toLocaleString("zh-CN", {
-                                                      month: "2-digit",
-                                                      day: "2-digit",
-                                                      hour: "2-digit",
-                                                      minute: "2-digit",
-                                                  })}
-                                            </span>
-                                        </span>
-                                        <button type="button" title="删除会话"
-                                                className="flex size-7 items-center justify-center text-ink/45 hover:bg-destructive/10 hover:text-destructive"
-                                                onClick={event => {
-                                                    event.stopPropagation()
-                                                    setError(null)
-
-                                                    deleteChatConversation(conversation.id)
-                                                        .then(() => {
-                                                            setChatHistoryList(current =>
-                                                                current.filter(item => item.id !== conversation.id)
-                                                            )
-
-                                                            if (conversation.id === conversationId) {
-                                                                setConversationId(crypto.randomUUID())
-                                                                setChatMessages([])
-                                                                setDraft("")
-                                                            }
-                                                        })
-                                                        .catch(error => setError(getErrorMessage(error)))
-                                                }}
+                                    return (
+                                        <DropdownMenuItem
+                                            key={conversation.id}
+                                            title={conversation.title}
+                                            onClick={() => {
+                                                setDraft("")
+                                                setError(null)
+                                                void openConversation(conversation.collectionId, conversation.id)
+                                            }}
+                                            className={cn(
+                                                "grid grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] gap-2 rounded-none border-b border-ink/15 px-2 py-2.5 data-highlighted:bg-marker-yellow/45",
+                                                conversation.id === conversationId && "bg-marker-yellow/65",
+                                            )}
                                         >
-                                            <Trash2 className="size-3.5"/>
-                                        </button>
-                                    </DropdownMenuItem>
-                                ))}
+                                            <span className="flex size-7 items-center justify-center border border-ink/30 bg-paper">
+                                                {generating
+                                                    ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none"/>
+                                                    : <MessageCircle className="size-3.5"/>}
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-xs font-black">{conversation.title}</span>
+                                                <span className="mt-0.5 block font-mono text-[10px] text-ink/50">
+                                                      {new Date(conversation.updateTime).toLocaleString("zh-CN", {
+                                                          month: "2-digit",
+                                                          day: "2-digit",
+                                                          hour: "2-digit",
+                                                          minute: "2-digit",
+                                                      })}
+                                                </span>
+                                            </span>
+                                            <button type="button" title={generating ? "请先停止生成" : "删除会话"}
+                                                    disabled={generating}
+                                                    className="flex size-7 items-center justify-center text-ink/45 hover:bg-destructive/10 hover:text-destructive disabled:opacity-35"
+                                                    onClick={event => {
+                                                        event.stopPropagation()
+                                                        if (generating) return
+                                                        setError(null)
+
+                                                        deleteConversation(conversation.collectionId, conversation.id)
+                                                            .then(() => setDraft(""))
+                                                            .catch(error => setError(getErrorMessage(error)))
+                                                    }}
+                                            >
+                                                <Trash2 className="size-3.5"/>
+                                            </button>
+                                        </DropdownMenuItem>
+                                    )
+                                })}
                             </DropdownMenuGroup>
 
                             <DropdownMenuSeparator className="mx-0 my-1 bg-ink/25"/>
                             <DropdownMenuItem
+                                disabled={collectionHasRunningConversation}
                                 onClick={() => {
                                     if (selectedCollectionId === null) return
                                     setError(null)
 
-                                    clearChatConversations(selectedCollectionId)
+                                    clearConversations(selectedCollectionId)
                                         .then(() => {
-                                            setChatHistoryList([])
-                                            setConversationId(crypto.randomUUID())
-                                            setChatMessages([])
                                             setDraft("")
                                         })
                                         .catch(error => setError(getErrorMessage(error)))
@@ -515,7 +349,7 @@ function AiPanel() {
                                 className="rounded-none px-2 py-2 font-black data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
                             >
                                 <Trash2/>
-                                清空历史记录
+                                {collectionHasRunningConversation ? "请先停止正在生成的对话" : "清空历史记录"}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
 
@@ -543,13 +377,8 @@ function AiPanel() {
                                         {message.reasoningContent && (
                                             <Collapsible
                                                 open={message.reasoningOpen}
-                                                onOpenChange={reasoningOpen => setChatMessages(current =>
-                                                    current.map(chatMessage =>
-                                                        chatMessage.role === "assistant" && chatMessage.id === message.id
-                                                            ? {...chatMessage, reasoningOpen}
-                                                            : chatMessage
-                                                    )
-                                                )}
+                                                onOpenChange={reasoningOpen => conversationId !== null
+                                                    && setReasoningOpen(conversationId, message.id, reasoningOpen)}
                                                 className="mb-3 border border-ink/35 bg-marker-blue/8"
                                             >
                                                 <CollapsibleTrigger
@@ -588,6 +417,9 @@ function AiPanel() {
                                         {message.streaming && !message.reasoningContent && !message.content && (
                                             <span className="shimmer font-semibold">正在思考...</span>
                                         )}
+                                        {message.status === "CANCELLED" && (
+                                            <p className="mt-2 font-mono text-[10px] font-bold text-ink/50">已停止生成</p>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -609,8 +441,8 @@ function AiPanel() {
                     {proposalsLoading && (
                         <p className="font-mono text-[10px] font-bold text-ink/55">正在检查文档变更…</p>
                     )}
-                    {error && (
-                        <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error}</p>
+                    {(error ?? sessionError) && (
+                        <p className={'text-sm font-semibold text-destructive'} role={"alert"}>{error ?? sessionError}</p>
                     )}
                 </div>
             </div>
@@ -642,7 +474,7 @@ function AiPanel() {
                             disabled={modelLoading || !modelProviders.some(provider => provider.models.length > 0)}
                             aria-label="选择 AI 模型"
                             title={selectedModel?.modelCode}
-                            className="flex h-9 max-w-72 min-w-0 rotate-[-0.4deg] items-center gap-1.5 border-2 border-ink bg-paper px-3 font-mono text-sm font-bold shadow-[2px_2px_0_var(--kraft)] outline-none transition-none hover:bg-marker-yellow/35 focus-visible:ring-3 focus-visible:ring-marker-blue/35 disabled:cursor-not-allowed disabled:opacity-50 data-popup-open:bg-marker-yellow/35"
+                            className="flex h-9 max-w-72 min-w-0 self-center items-center gap-1.5 border-2 border-ink bg-paper px-3 font-mono text-sm font-bold shadow-[2px_2px_0_var(--kraft)] outline-none transition-none hover:bg-marker-yellow/35 focus-visible:ring-3 focus-visible:ring-marker-blue/35 disabled:cursor-not-allowed disabled:opacity-50 data-popup-open:bg-marker-yellow/35"
                         >
                             <Sparkles className="size-4 shrink-0 text-marker-blue" aria-hidden="true"/>
                             <span className="min-w-0 truncate">{selectedModel?.modelCode ?? "选择模型"}</span>
@@ -684,14 +516,25 @@ function AiPanel() {
                     </DropdownMenu>
 
                     <Button
-                        type="submit"
+                        type={sending ? "button" : "submit"}
                         size="icon-lg"
-                        disabled={!draft.trim() || sending || messagesLoading || modelLoading || !selectedModel || selectedCollectionId === null}
-                        aria-label={sending ? "正在发送" : "发送消息"}
-                        className="rounded-none border-2 border-ink bg-marker-yellow text-ink shadow-[2px_2px_0_var(--kraft)] transition-none hover:bg-marker-yellow/80 focus-visible:ring-marker-blue/35 active:translate-y-px active:shadow-none"
+                        disabled={sending
+                            ? stopping
+                            : !draft.trim() || messagesLoading || modelLoading || !selectedModel || selectedCollectionId === null || conversationId === null}
+                        onClick={sending && conversationId !== null ? () => stopGeneration(conversationId) : undefined}
+                        aria-label={sending ? (stopping ? "正在停止" : "停止生成") : "发送消息"}
+                        title={sending ? (stopping ? "正在停止" : "停止生成") : "发送消息"}
+                        className={cn(
+                            "relative self-center rounded-none border-2 border-ink text-ink shadow-[2px_2px_0_var(--kraft)] transition-none focus-visible:ring-marker-blue/35 active:translate-y-px active:shadow-none",
+                            sending ? "bg-marker-yellow/25 hover:bg-marker-yellow/45" : "bg-marker-yellow hover:bg-marker-yellow/80",
+                        )}
                     >
                         {sending
-                            ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden="true"/>
+                            ? <Spinner
+                                className="size-5 text-ink animation-duration-[1.8s] motion-reduce:animate-none"
+                                strokeWidth={2}
+                                aria-hidden="true"
+                            />
                             : <Send aria-hidden="true"/>}
                     </Button>
                 </div>

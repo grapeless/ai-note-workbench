@@ -103,6 +103,8 @@ export interface ChatConversation {
 
 export type ChatMessageRole = 'USER' | 'ASSISTANT'
 
+export type ChatMessageStatus = 'GENERATING' | 'COMPLETED' | 'CANCELLED' | 'FAILED'
+
 export interface ChatCitation {
     citationId: string
     documentId: number
@@ -120,4 +122,5 @@ export interface HistoryChatMessage {
     content: string
     reasoningContent: string | null
     citations: ChatCitation[]
+    status: ChatMessageStatus
 }

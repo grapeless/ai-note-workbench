@@ -22,8 +22,13 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -36,6 +41,7 @@ public class ChatService {
     private final ResearchTools researchTools;
     private final WritingTools writingTools;
     private final KnowledgeDocumentService knowledgeDocumentService;
+    private final ConcurrentMap<UUID, CancellationHandle> cancellationHandles = new ConcurrentHashMap<>();
 
     public Flux<ChatResponseVO> chat(ChatRequestDTO chatRequestDTO) {
         //1.根据提供商获取对应默认chatClient
@@ -90,6 +96,8 @@ public class ChatService {
 
         //4.追加一段对流中消息的持久化操作
         UUID assistantMessageId = chatHistoryService.startTurn(chatRequestDTO);
+        CancellationHandle cancellationHandle = new CancellationHandle();
+        cancellationHandles.put(assistantMessageId, cancellationHandle);
         StringBuilder reasoningContent = new StringBuilder();
         StringBuilder content = new StringBuilder();
         return chatResponseFlux.doOnNext(chatResponseVO -> {
@@ -99,17 +107,48 @@ public class ChatService {
                         content.append(chatResponseVO.content());
                     }
                 })
-                .doOnComplete(() -> chatHistoryService.completeTurn(chatRequestDTO.conversationId(),
-                        assistantMessageId, reasoningContent.toString(), content.toString()))
+                .takeUntilOther(cancellationHandle.cancellationSignal())
+                .doOnComplete(() -> {
+                    if (cancellationHandle.isCancelled()) {
+                        chatHistoryService.cancelTurn(chatRequestDTO.conversationId(), assistantMessageId,
+                                reasoningContent.toString(), content.toString());
+                    } else {
+                        chatHistoryService.completeTurn(chatRequestDTO.conversationId(), assistantMessageId,
+                                reasoningContent.toString(), content.toString());
+                    }
+                })
                 .doOnError(ignored -> chatHistoryService.failTurn(chatRequestDTO.conversationId(),
                         assistantMessageId, reasoningContent.toString(), content.toString()))
                 .doOnCancel(() -> chatHistoryService.failTurn(chatRequestDTO.conversationId(),
-                        assistantMessageId, reasoningContent.toString(), content.toString()));
+                        assistantMessageId, reasoningContent.toString(), content.toString()))
+                .doFinally(ignored -> cancellationHandles.remove(assistantMessageId, cancellationHandle));
+    }
+
+    public void cancel(UUID assistantMessageId) {
+        CancellationHandle cancellationHandle = cancellationHandles.get(assistantMessageId);
+        if (cancellationHandle != null) cancellationHandle.cancel();
     }
 
     public List<ModelProviderVO> getAvailableModelList() {
         return chatModelProperties.getProviders().entrySet().stream()
                 .map(entry -> new ModelProviderVO(entry.getKey(), entry.getValue()))
                 .toList();
+    }
+
+    private static final class CancellationHandle {
+        private final Sinks.Empty<Void> cancellationSink = Sinks.empty();
+        private final AtomicBoolean cancelled = new AtomicBoolean();
+
+        private Mono<Void> cancellationSignal() {
+            return cancellationSink.asMono();
+        }
+
+        private boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        private void cancel() {
+            if (cancelled.compareAndSet(false, true)) cancellationSink.tryEmitEmpty();
+        }
     }
 }

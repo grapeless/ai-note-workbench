@@ -38,6 +38,13 @@ public class ChatController {
         return chatService.chat(chatRequestDTO);
     }
 
+    @Operation(summary = "停止生成AI回复")
+    @PostMapping("/messages/{assistantMessageId}/cancel")
+    public Result<Void> cancelChatMessage(@PathVariable UUID assistantMessageId) {
+        chatService.cancel(assistantMessageId);
+        return Result.success();
+    }
+
     @Operation(summary = "查询可用模型列表")
     @GetMapping("/models")
     public Result<List<ModelProviderVO>> getAvailableModelList() {

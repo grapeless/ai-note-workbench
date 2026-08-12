@@ -3,6 +3,7 @@ package com.lim.noteworkbench.model.vo;
 import com.lim.noteworkbench.model.entity.ChatCitation;
 import com.lim.noteworkbench.model.entity.ChatMessage;
 import com.lim.noteworkbench.model.enums.ChatMessageRole;
+import com.lim.noteworkbench.model.enums.ChatMessageStatus;
 import com.lim.noteworkbench.model.enums.DocumentType;
 
 import java.util.List;
@@ -16,7 +17,6 @@ import java.util.UUID;
  *     <li>{@code conversationId}：当前会话已经由接口上下文确定。</li>
  *     <li>{@code sequenceId}：仅用于后端持久化和消息排序。</li>
  *     <li>{@code providerCode}、{@code modelCode}：当前前端不展示模型信息。</li>
- *     <li>{@code status}：当前前端不展示历史消息状态。</li>
  *     <li>{@code createTime}、{@code updateTime}：当前前端不展示消息时间。</li>
  * </ul>
  */
@@ -25,7 +25,8 @@ public record ChatMessageVO(
         ChatMessageRole role,
         String content,
         String reasoningContent,
-        List<Citation> citations
+        List<Citation> citations,
+        ChatMessageStatus status
 ) {
 
     public ChatMessageVO(ChatMessage chatMessage, List<Citation> citations) {
@@ -34,7 +35,8 @@ public record ChatMessageVO(
                 chatMessage.getRole(),
                 chatMessage.getContent(),
                 chatMessage.getReasoningContent(),
-                citations
+                citations,
+                chatMessage.getStatus()
         );
     }
 

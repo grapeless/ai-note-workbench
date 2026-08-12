@@ -24,6 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import {Textarea} from "@/components/ui/textarea"
+import {useChatStore} from "@/store/useChatStore"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
 export interface CollectionFormState {
@@ -235,6 +236,10 @@ export function DeleteCollectionDialog({
     onClose: () => void
 }) {
     const deleteCollection = useWorkbenchStore((state) => state.deleteCollection)
+    const hasRunningConversation = useChatStore(state => Object.keys(state.runningConversationIds).some(
+        conversationId => state.sessions[conversationId]?.collectionId === collection.id
+    ))
+    const discardChatCollection = useChatStore(state => state.discardCollection)
     const [deleting, setDeleting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -260,6 +265,11 @@ export function DeleteCollectionDialog({
                             当前正在查看这个集合；未保存的正文修改也会被放弃。
                         </p>
                     )}
+                    {hasRunningConversation && (
+                        <p className="mt-3 text-xs font-semibold leading-5 text-destructive">
+                            该集合中有正在生成的 AI 对话，请先停止生成。
+                        </p>
+                    )}
                     {error && (
                         <p className="mt-4 border-l-4 border-destructive bg-destructive/8 px-3 py-2 text-sm font-semibold text-destructive">
                             {error}
@@ -274,12 +284,16 @@ export function DeleteCollectionDialog({
                     <AlertDialogAction
                         type="button"
                         variant="destructive"
-                        disabled={deleting}
+                        disabled={deleting || hasRunningConversation}
                         onClick={() => {
+                            if (hasRunningConversation) return
                             setDeleting(true)
                             setError(null)
                             deleteCollection(collection.id)
-                                .then(onClose)
+                                .then(() => {
+                                    discardChatCollection(collection.id)
+                                    onClose()
+                                })
                                 .catch(error => setError(error instanceof Error ? error.message : "删除集合失败"))
                                 .finally(() => setDeleting(false))
                         }}
