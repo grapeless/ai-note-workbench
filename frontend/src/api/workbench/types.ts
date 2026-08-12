@@ -23,6 +23,10 @@ export interface KnowledgeDocument {
     updateTime: string
 }
 
+export interface UpdateKnowledgeDocumentRequest {
+    title: string
+}
+
 export interface EditableDocument {
     documentId: number
     title: string

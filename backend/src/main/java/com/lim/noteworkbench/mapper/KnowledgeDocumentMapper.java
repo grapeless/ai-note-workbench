@@ -19,4 +19,6 @@ public interface KnowledgeDocumentMapper {
                      @Param("errorMessage") String errorMessage);
 
     int deleteById(@Param("id") Long id);
+
+    int updateTitle(@Param("id") Long id, @Param("title") String title);
 }

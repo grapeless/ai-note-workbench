@@ -102,6 +102,13 @@ public class KnowledgeDocumentService {
         return storageService.load(knowledgeDocument.getSourcePath());
     }
 
+    public KnowledgeDocument updateTitle(Long id, String title) {
+        KnowledgeDocument knowledgeDocument = getById(id);
+        knowledgeDocumentMapper.updateTitle(id, title);
+        knowledgeDocument.setTitle(title);
+        return knowledgeDocument;
+    }
+
     /**
      * 从上传文件中提取文档标题，无法获取有效文件名时返回默认标题。
      *

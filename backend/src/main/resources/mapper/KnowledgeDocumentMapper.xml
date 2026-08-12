@@ -108,4 +108,9 @@
         WHERE id = #{id}
     </delete>
 
+    <update id="updateTitle">
+        UPDATE knowledge_document
+        SET title = #{title}
+        where id = #{id}
+    </update>
 </mapper>

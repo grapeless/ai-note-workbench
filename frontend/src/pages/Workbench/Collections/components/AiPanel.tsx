@@ -221,17 +221,45 @@ function AiPanel() {
             .finally(() => setModelLoading(false))
     }, [])
 
-    //切换知识库时开始新会话
+    //切换知识库时加载最近会话，没有历史记录则开始新会话
     useEffect(() => {
+        let cancelled = false
+
         setConversationId(crypto.randomUUID())
         setChatMessages([])
         setChatHistoryList([])
         setError(null)
-        if (selectedCollectionId === null) return
+        if (selectedCollectionId === null) {
+            setMessagesLoading(false)
+            return
+        }
+
+        setMessagesLoading(true)
 
         listChatConversations(selectedCollectionId)
-            .then(setChatHistoryList)
-            .catch(error => setError(getErrorMessage(error)))
+            .then(conversations => {
+                if (cancelled) return []
+
+                setChatHistoryList(conversations)
+
+                if (conversations.length === 0) return []
+
+                setConversationId(conversations[0].id)
+                return listChatMessages(conversations[0].id)
+            })
+            .then(messages => {
+                if (!cancelled) setChatMessages(messages.map(toChatMessage))
+            })
+            .catch(error => {
+                if (!cancelled) setError(getErrorMessage(error))
+            })
+            .finally(() => {
+                if (!cancelled) setMessagesLoading(false)
+            })
+
+        return () => {
+            cancelled = true
+        }
     }, [selectedCollectionId]);
 
     //切换会话时先移除上一个会话的提案。

@@ -1,5 +1,10 @@
 import {get, post, put, remove, upload} from '@/api'
-import type {EditableDocument, KnowledgeDocument, UpdateEditableDocumentRequest} from '@/api/workbench/types'
+import type {
+    EditableDocument,
+    KnowledgeDocument,
+    UpdateEditableDocumentRequest,
+    UpdateKnowledgeDocumentRequest
+} from '@/api/workbench/types'
 
 export const listDocuments = (collectionId: number) =>
     get<KnowledgeDocument[]>('/documents/list', {collectionId})
@@ -18,6 +23,9 @@ export function uploadDocument(collectionId: number, file: File) {
 
 export const getDocument = (id: number) =>
     get<KnowledgeDocument>(`/documents/${id}`)
+
+export const updateDocumentTitle = (id: number, request: UpdateKnowledgeDocumentRequest) =>
+    put<KnowledgeDocument>(`/documents/${id}`, request)
 
 export const processDocument = (id: number) =>
     post<KnowledgeDocument>(`/documents/${id}/process`)

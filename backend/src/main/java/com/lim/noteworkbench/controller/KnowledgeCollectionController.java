@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,10 +22,7 @@ public class KnowledgeCollectionController {
 
     @Operation(summary = "创建集合")
     @PostMapping
-    public Result<KnowledgeCollection> create(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "创建集合参数")
-            @RequestBody
-            @Valid CreateCollectionDTO request) {
+    public Result<KnowledgeCollection> create(@RequestBody @Valid CreateCollectionDTO request) {
         return Result.success(knowledgeCollectionService.create(request));
     }
 
@@ -38,19 +34,13 @@ public class KnowledgeCollectionController {
 
     @Operation(summary = "查询集合详情")
     @GetMapping("/{id}")
-    public Result<KnowledgeCollection> getById(
-            @Parameter(description = "集合 ID")
-            @PathVariable
-            @Positive(message = "集合ID必须为正数") Long id) {
+    public Result<KnowledgeCollection> getById(@Parameter(description = "集合 ID") @PathVariable Long id) {
         return Result.success(knowledgeCollectionService.getById(id));
     }
 
     @Operation(summary = "删除集合")
     @DeleteMapping("/{id}")
-    public Result<Void> delete(
-            @Parameter(description = "集合 ID")
-            @PathVariable
-            @Positive(message = "集合ID必须为正数") Long id) {
+    public Result<Void> delete(@Parameter(description = "集合 ID") @PathVariable Long id) {
         knowledgeCollectionService.delete(id);
         return Result.success();
     }

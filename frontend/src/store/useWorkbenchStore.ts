@@ -1,7 +1,12 @@
 import type {ChatCitation, KnowledgeCollection, KnowledgeDocument} from "@/api/workbench/types.ts";
 import {create} from "zustand/react";
 import {listCollections} from "@/api/workbench/collections.ts";
-import {deleteDocument as deleteDocumentRequest, getDocument, listDocuments} from "@/api/workbench/documents.ts";
+import {
+    deleteDocument as deleteDocumentRequest,
+    getDocument,
+    listDocuments,
+    updateDocumentTitle as updateDocumentTitleRequest
+} from "@/api/workbench/documents.ts";
 
 export type WorkbenchView = "documents" | "details" | "ai"
 
@@ -58,6 +63,7 @@ type WorkBenchState = {
     //文档相关
     loadDocuments: (collectionId: number) => Promise<void>
     refreshDocuments: () => Promise<void>
+    updateDocumentTitle: (id: number, title: string) => Promise<void>
     deleteDocument: (id: number) => Promise<void>
 
     //选中的文档相关
@@ -242,6 +248,16 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
         if (collectionId !== null) {
             await get().loadDocuments(collectionId,)
         }
+    },
+    updateDocumentTitle: async (id, title) => {
+        const updatedDocument = await updateDocumentTitleRequest(id, {title})
+
+        set(state => ({
+            documents: state.documents.map(document =>
+                document.id === id ? updatedDocument : document
+            ),
+            ...(state.document?.id === id ? {document: updatedDocument} : {}),
+        }))
     },
     deleteDocument: async (id) => {
         await deleteDocumentRequest(id)

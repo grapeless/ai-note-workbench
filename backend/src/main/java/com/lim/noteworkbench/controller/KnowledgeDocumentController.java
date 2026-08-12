@@ -2,6 +2,7 @@ package com.lim.noteworkbench.controller;
 
 import com.lim.noteworkbench.common.response.Result;
 import com.lim.noteworkbench.model.dto.UpdateEditableDocumentDTO;
+import com.lim.noteworkbench.model.dto.UpdateKnowledgeDocumentDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.vo.EditableDocumentVO;
 import com.lim.noteworkbench.rag.etl.EtlPipeline;
@@ -72,6 +73,14 @@ public class KnowledgeDocumentController {
         knowledgeDocumentService.delete(id);
         return Result.success();
     }
+
+    @Operation(summary = "修改文档标题")
+    @PutMapping("/{id}")
+    public Result<KnowledgeDocument> updateTitle(@PathVariable Long id,
+                                                 @RequestBody UpdateKnowledgeDocumentDTO updateKnowledgeDocumentDTO) {
+        return Result.success(knowledgeDocumentService.updateTitle(id, updateKnowledgeDocumentDTO.title()));
+    }
+
 
     @Operation(summary = "读取可编辑类型文档的正文")
     @GetMapping("/{id}/content")
