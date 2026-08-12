@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -93,6 +94,34 @@ public class LocalStorageService implements StorageService {
             Files.deleteIfExists(target);
         } catch (IOException exception) {
             throw new UncheckedIOException("删除文件失败", exception);
+        }
+    }
+
+    @Override
+    public void deleteCollection(Long collectionId) {
+        Path uploadsRoot = Path.of(storageProperties.getRoot())
+                .toAbsolutePath()
+                .normalize()
+                .resolve("uploads")
+                .normalize();
+        Path collectionDirectory = uploadsRoot.resolve(collectionId.toString()).normalize();
+
+        if (!collectionDirectory.startsWith(uploadsRoot) || collectionDirectory.equals(uploadsRoot)) {
+            throw new BusinessException(ResultCode.PARAMS_ERROR, "非法集合文件路径");
+        }
+
+        if (!Files.exists(collectionDirectory)) return;
+
+        try (var paths = Files.walk(collectionDirectory)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException exception) {
+                    throw new UncheckedIOException("删除集合文件失败", exception);
+                }
+            });
+        } catch (IOException exception) {
+            throw new UncheckedIOException("删除集合文件失败", exception);
         }
     }
 

@@ -1,6 +1,17 @@
-import type {ChatCitation, KnowledgeCollection, KnowledgeDocument} from "@/api/workbench/types.ts";
+import type {
+    ChatCitation,
+    CreateCollectionRequest,
+    KnowledgeCollection,
+    KnowledgeDocument,
+    UpdateCollectionRequest,
+} from "@/api/workbench/types.ts";
 import {create} from "zustand/react";
-import {listCollections} from "@/api/workbench/collections.ts";
+import {
+    createCollection as createCollectionRequest,
+    deleteCollection as deleteCollectionRequest,
+    listCollections,
+    updateCollection as updateCollectionRequest,
+} from "@/api/workbench/collections.ts";
 import {
     deleteDocument as deleteDocumentRequest,
     getDocument,
@@ -59,6 +70,9 @@ type WorkBenchState = {
     //集合相关
     loadCollections: () => Promise<void>
     selectCollection: (id: number | null) => Promise<void>
+    createCollection: (request: CreateCollectionRequest) => Promise<KnowledgeCollection>
+    updateCollection: (id: number, request: UpdateCollectionRequest) => Promise<void>
+    deleteCollection: (id: number) => Promise<void>
 
     //文档相关
     loadDocuments: (collectionId: number) => Promise<void>
@@ -194,6 +208,59 @@ export const useWorkbenchStore = create<WorkBenchState>()((set, get) => ({
             activeCitation: null,
             searchQuery: "",
             ...(selectedCollectionId === null ? {} : {activeView: "documents" as const})
+        })
+
+        if (selectedCollectionId !== null) {
+            await get().loadDocuments(selectedCollectionId)
+        }
+    },
+    createCollection: async (request) => {
+        const collection = await createCollectionRequest(request)
+
+        collectionRequestVersion++
+        set(state => ({collections: [collection, ...state.collections]}))
+
+        return collection
+    },
+    updateCollection: async (id, request) => {
+        const collection = await updateCollectionRequest(id, request)
+
+        collectionRequestVersion++
+        set(state => ({
+            collections: state.collections.map(item => item.id === id ? collection : item),
+        }))
+    },
+    deleteCollection: async (id) => {
+        await deleteCollectionRequest(id)
+
+        collectionRequestVersion++
+
+        if (id !== get().selectedCollectionId) {
+            set(state => ({collections: state.collections.filter(collection => collection.id !== id)}))
+            return
+        }
+
+        documentsRequestVersion++
+        documentRequestVersion++
+
+        const collections = get().collections.filter(collection => collection.id !== id)
+        const selectedCollectionId = collections[0]?.id ?? null
+
+        set({
+            collections,
+            selectedCollectionId,
+            documents: [],
+            selectedDocumentId: null,
+            documentsLoading: false,
+            documentsError: null,
+            document: null,
+            documentLoading: false,
+            documentError: null,
+            dirtyDocumentId: null,
+            pendingSelection: null,
+            activeCitation: null,
+            searchQuery: "",
+            activeView: "documents",
         })
 
         if (selectedCollectionId !== null) {

@@ -17,6 +17,11 @@ public interface StorageService {
     void delete(String relativePath);
 
     /**
+     * 删除对应集合的全部文件。
+     */
+    void deleteCollection(Long collectionId);
+
+    /**
      * 加载文件
      */
     Resource load(String relativePath);

@@ -9,6 +9,7 @@ import {
     Ellipsis,
     LoaderCircle,
     Pencil,
+    Plus,
     RefreshCw,
     Settings2,
     Trash2,
@@ -17,7 +18,8 @@ import {
 } from "lucide-react"
 import {NavLink, Outlet, useBlocker, useLocation, useNavigate} from "react-router"
 
-import type {KnowledgeCollection, KnowledgeDocument} from "@/api/workbench/types"
+import {listEmbeddingModels} from "@/api/workbench/collections"
+import type {EmbeddingModelProvider, KnowledgeCollection, KnowledgeDocument} from "@/api/workbench/types"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -40,6 +42,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {Input} from "@/components/ui/input"
 import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
     Sidebar,
     SidebarContent,
     SidebarGroup,
@@ -57,6 +68,7 @@ import {
     SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {TooltipProvider} from "@/components/ui/tooltip"
+import {Textarea} from "@/components/ui/textarea"
 import {cn} from "@/lib/utils"
 import {useWorkbenchStore} from "@/store/useWorkbenchStore"
 
@@ -68,6 +80,15 @@ const nestedMenuClassName =
 
 const nestedMenuStateClassName =
     "group/nested relative w-full translate-x-0 cursor-pointer justify-start rounded-none border border-ink/25 bg-paper px-4 text-left text-sm font-medium shadow-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-transparent hover:border-ink hover:bg-paper hover:shadow-[2px_2px_0_var(--kraft)] focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar data-active:border-ink data-active:bg-sidebar-accent data-active:font-bold data-active:text-sidebar-accent-foreground data-active:shadow-[3px_3px_0_var(--workbench-primary)] data-active:before:bg-marker-blue data-active:hover:bg-sidebar-accent data-active:hover:shadow-[3px_3px_0_var(--workbench-primary)] motion-reduce:transition-none"
+
+type CollectionFormState = {
+    mode: "create" | "edit"
+    id: number | null
+    name: string
+    description: string
+    embeddingProvider: string
+    embeddingModel: string
+}
 
 export function Workbench() {
     const location = useLocation()
@@ -288,7 +309,7 @@ export function Workbench() {
                     if (blocker.state === "blocked") blocker.reset()
                 }}
             >
-                <AlertDialogContent className="rotate-[-0.15deg] gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-yellow bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
+                <AlertDialogContent className="gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-yellow bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
                     <AlertDialogHeader className="grid grid-cols-[auto_1fr] grid-rows-[auto_auto] place-items-start gap-x-3 gap-y-1 border-b border-dashed border-ink/35 p-5 text-left">
                         <AlertDialogMedia className="row-span-2 mb-0 rounded-none border-2 border-ink bg-marker-yellow/35">
                             <TriangleAlert className="size-5"/>
@@ -353,6 +374,9 @@ function CollectionItems({
     const documentsLoading = useWorkbenchStore((state) => state.documentsLoading)
     const documentsError = useWorkbenchStore((state) => state.documentsError)
     const selectDocument = useWorkbenchStore((state) => state.selectDocument)
+    const createCollection = useWorkbenchStore((state) => state.createCollection)
+    const updateCollection = useWorkbenchStore((state) => state.updateCollection)
+    const deleteCollection = useWorkbenchStore((state) => state.deleteCollection)
     const updateDocumentTitle = useWorkbenchStore((state) => state.updateDocumentTitle)
     const deleteDocument = useWorkbenchStore((state) => state.deleteDocument)
     const [expandedCollectionId, setExpandedCollectionId] = useState<number | null>(selectedCollectionId)
@@ -362,6 +386,32 @@ function CollectionItems({
     const [documentToDelete, setDocumentToDelete] = useState<KnowledgeDocument | null>(null)
     const [deleting, setDeleting] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
+    const [collectionForm, setCollectionForm] = useState<CollectionFormState | null>(null)
+    const [embeddingModelProviders, setEmbeddingModelProviders] = useState<EmbeddingModelProvider[]>([])
+    const [embeddingModelsLoading, setEmbeddingModelsLoading] = useState(true)
+    const [embeddingModelsError, setEmbeddingModelsError] = useState<string | null>(null)
+    const [savingCollection, setSavingCollection] = useState(false)
+    const [collectionFormError, setCollectionFormError] = useState<string | null>(null)
+    const [collectionToDelete, setCollectionToDelete] = useState<KnowledgeCollection | null>(null)
+    const [deletingCollection, setDeletingCollection] = useState(false)
+    const [collectionDeleteError, setCollectionDeleteError] = useState<string | null>(null)
+
+    useEffect(() => {
+        listEmbeddingModels()
+            .then(providers => {
+                setEmbeddingModelProviders(providers)
+                setEmbeddingModelsError(null)
+                setCollectionForm(current => current?.mode === "create" ? {
+                    ...current,
+                    embeddingProvider: providers[0]?.providerCode ?? "",
+                    embeddingModel: providers[0]?.models[0] ?? "",
+                } : current)
+            })
+            .catch(error => setEmbeddingModelsError(
+                error instanceof Error ? error.message : "嵌入模型加载失败",
+            ))
+            .finally(() => setEmbeddingModelsLoading(false))
+    }, [])
 
     useEffect(() => {
         if (active) setExpandedCollectionId(selectedCollectionId)
@@ -369,74 +419,87 @@ function CollectionItems({
         setRenameError(null)
     }, [active, selectedCollectionId])
 
-    if (loading && collections.length === 0) {
-        return (
-            <>
-                {[0, 1, 2].map((item) => (
+    return (
+        <>
+            <SidebarMenuSubItem>
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full rounded-none border-2 border-ink bg-marker-yellow px-3 font-black text-ink shadow-[2px_2px_0_var(--ink)] transition-none hover:bg-marker-yellow/75 active:translate-y-px active:shadow-none"
+                    onClick={() => {
+                        setCollectionForm({
+                            mode: "create",
+                            id: null,
+                            name: "",
+                            description: "",
+                            embeddingProvider: embeddingModelProviders[0]?.providerCode ?? "",
+                            embeddingModel: embeddingModelProviders[0]?.models[0] ?? "",
+                        })
+                        setCollectionFormError(null)
+                    }}
+                >
+                    <Plus/>
+                    新建集合
+                </Button>
+            </SidebarMenuSubItem>
+
+            {loading && collections.length === 0 ? (
+                [0, 1, 2].map((item) => (
                     <SidebarMenuSubItem key={item}>
                         <SidebarMenuSkeleton
                             showIcon
                             className="h-[4.5rem] rounded-none border border-ink/20 bg-paper px-4"
                         />
                     </SidebarMenuSubItem>
-                ))}
-            </>
-        )
-    }
-
-    if (error) {
-        return (
-            <SidebarMenuSubItem>
-                <div
-                    className="border-2 border-ink bg-marker-red/10 p-4 shadow-[3px_3px_0_var(--marker-red)]"
-                    role="alert"
-                >
-                    <AlertCircle className="size-5 text-marker-red" aria-hidden="true"/>
-                    <p className="mt-2 text-sm font-black">集合加载失败</p>
-                    <p className="mt-1 wrap-break-word text-xs leading-5 text-pencil">{error}</p>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 rounded-none border-ink bg-paper font-bold shadow-[2px_2px_0_var(--ink)]"
-                        disabled={loading}
-                        onClick={onRetry}
+                ))
+            ) : error ? (
+                <SidebarMenuSubItem>
+                    <div
+                        className="border-2 border-ink bg-marker-red/10 p-4 shadow-[3px_3px_0_var(--marker-red)]"
+                        role="alert"
                     >
-                        <RefreshCw
-                            data-icon="inline-start"
-                            className={cn(loading && "animate-spin motion-reduce:animate-none")}
-                            aria-hidden="true"
-                        />
-                        重新加载
-                    </Button>
-                </div>
-            </SidebarMenuSubItem>
-        )
-    }
-
-    if (collections.length === 0) {
-        return (
-            <SidebarMenuSubItem>
-                <p
-                    className="border border-dashed border-ink/40 bg-paper/80 px-4 py-6 text-center font-reading text-xs italic text-pencil">
-                    暂无集合
-                </p>
-            </SidebarMenuSubItem>
-        )
-    }
-
-    return (
-        <>
-            {collections.map((collection) => {
+                        <AlertCircle className="size-5 text-marker-red" aria-hidden="true"/>
+                        <p className="mt-2 text-sm font-black">集合加载失败</p>
+                        <p className="mt-1 wrap-break-word text-xs leading-5 text-pencil">{error}</p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 rounded-none border-ink bg-paper font-bold shadow-[2px_2px_0_var(--ink)]"
+                            disabled={loading}
+                            onClick={onRetry}
+                        >
+                            <RefreshCw
+                                data-icon="inline-start"
+                                className={cn(loading && "animate-spin motion-reduce:animate-none")}
+                                aria-hidden="true"
+                            />
+                            重新加载
+                        </Button>
+                    </div>
+                </SidebarMenuSubItem>
+            ) : collections.length === 0 ? (
+                <SidebarMenuSubItem>
+                    <p className="border border-dashed border-ink/40 bg-paper/80 px-4 py-6 text-center font-reading text-xs italic text-pencil">
+                        暂无集合
+                    </p>
+                </SidebarMenuSubItem>
+            ) : collections.map((collection) => {
                 const selected = collection.id === selectedCollectionId
                 const expanded = active && selected && expandedCollectionId === collection.id
 
                 return <SidebarMenuSubItem key={collection.id}>
-                <SidebarMenuSubButton
-                    render={
+                    <div
+                        data-active={active && selected ? "true" : undefined}
+                        className={cn(
+                            nestedMenuStateClassName,
+                            "group/collection grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_2.5rem] px-0",
+                        )}
+                    >
                         <button
                             type="button"
                             aria-pressed={selected}
+                            className="flex min-w-0 items-center gap-2 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
                             onClick={() => {
                                 if (active && selected) {
                                     setExpandedCollectionId(expanded ? null : collection.id)
@@ -446,33 +509,72 @@ function CollectionItems({
                                 setExpandedCollectionId(collection.id)
                                 onSelect(collection.id)
                             }}
-                        />
-                    }
-                    isActive={active && selected}
-                    className={cn(
-                        "h-auto min-h-[4.5rem] py-3",
-                        nestedMenuStateClassName,
-                    )}
-                >
-                    <span className="grid size-8 shrink-0 place-items-center border border-ink/40 bg-paper-warm">
-                        <Box strokeWidth={1.75} className="size-4!" aria-hidden="true"/>
-                    </span>
-                    <span className="min-w-0 flex-1 text-left">
-                        <span className="block truncate text-[13px] font-bold leading-5">{collection.name}</span>
-                        {collection.description && (
-                            <span className="mt-0.5 block line-clamp-2 text-xs font-normal leading-4 text-pencil">
-                                {collection.description}
+                        >
+                            <span className="grid size-8 shrink-0 place-items-center border border-ink/40 bg-paper-warm">
+                                <Box strokeWidth={1.75} className="size-4!" aria-hidden="true"/>
                             </span>
-                        )}
-                    </span>
-                    <ChevronRight
-                        className={cn(
-                            "ml-auto size-4! shrink-0 text-pencil transition-transform duration-150 motion-reduce:transition-none",
-                            expanded && "rotate-90",
-                        )}
-                        aria-hidden="true"
-                    />
-                </SidebarMenuSubButton>
+                            <span className="min-w-0 flex-1 text-left">
+                                <span className="block truncate text-[13px] font-bold leading-5">{collection.name}</span>
+                                {collection.description && (
+                                    <span className="mt-0.5 block line-clamp-2 text-xs font-normal leading-4 text-pencil">
+                                        {collection.description}
+                                    </span>
+                                )}
+                            </span>
+                            <ChevronRight
+                                className={cn(
+                                    "ml-auto size-4! shrink-0 text-pencil transition-transform duration-150 motion-reduce:transition-none",
+                                    expanded && "rotate-90",
+                                )}
+                                aria-hidden="true"
+                            />
+                        </button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                type="button"
+                                title="集合操作"
+                                className="flex min-h-[4.25rem] items-center justify-center text-pencil opacity-60 outline-none hover:bg-kraft/30 hover:text-ink group-hover/collection:opacity-100 data-popup-open:bg-kraft/30 data-popup-open:text-ink data-popup-open:opacity-100"
+                            >
+                                <Ellipsis className="size-4"/>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                sideOffset={4}
+                                className="w-36 rounded-none border-2 border-ink bg-paper p-1 text-ink shadow-[3px_3px_0_var(--kraft)] duration-0 data-open:animate-none data-closed:animate-none"
+                            >
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setCollectionForm({
+                                            mode: "edit",
+                                            id: collection.id,
+                                            name: collection.name,
+                                            description: collection.description ?? "",
+                                            embeddingProvider: collection.embeddingProvider ?? "",
+                                            embeddingModel: collection.embeddingModel ?? "",
+                                        })
+                                        setCollectionFormError(null)
+                                    }}
+                                    className="rounded-none px-2 py-2 text-xs font-bold data-highlighted:bg-marker-yellow/45"
+                                >
+                                    <Pencil/>
+                                    编辑集合
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="mx-0 bg-ink/20"/>
+                                <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => {
+                                        setCollectionToDelete(collection)
+                                        setCollectionDeleteError(null)
+                                    }}
+                                    className="rounded-none px-2 py-2 text-xs font-bold"
+                                >
+                                    <Trash2/>
+                                    删除集合
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
 
                 {expanded && (
                     <div className="mt-1 border-x border-b border-ink/25 bg-paper-warm/70 px-2 pb-2 pt-3">
@@ -632,6 +734,265 @@ function CollectionItems({
                 </SidebarMenuSubItem>
             })}
 
+            {collectionForm && (
+                <AlertDialog
+                    open
+                    onOpenChange={(open) => {
+                        if (!open && !savingCollection) setCollectionForm(null)
+                    }}
+                >
+                    <AlertDialogContent className="gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-blue bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)] sm:max-w-lg!">
+                        <form
+                            onSubmit={async event => {
+                                event.preventDefault()
+                                setSavingCollection(true)
+                                setCollectionFormError(null)
+
+                                try {
+                                    if (collectionForm.mode === "create") {
+                                        const collection = await createCollection({
+                                            name: collectionForm.name,
+                                            description: collectionForm.description,
+                                            embeddingProvider: collectionForm.embeddingProvider,
+                                            embeddingModel: collectionForm.embeddingModel,
+                                        })
+
+                                        setExpandedCollectionId(collection.id)
+                                        onSelect(collection.id)
+                                    } else {
+                                        await updateCollection(collectionForm.id!, {
+                                            name: collectionForm.name,
+                                            description: collectionForm.description,
+                                        })
+                                    }
+
+                                    setCollectionForm(null)
+                                } catch (error) {
+                                    setCollectionFormError(
+                                        error instanceof Error ? error.message : "保存集合失败",
+                                    )
+                                } finally {
+                                    setSavingCollection(false)
+                                }
+                            }}
+                        >
+                            <AlertDialogHeader className="gap-1 border-b border-dashed border-ink/35 p-5 text-left">
+                                <AlertDialogTitle className="font-display text-xl font-black">
+                                    {collectionForm.mode === "create" ? "新建集合" : "编辑集合"}
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-sm font-semibold leading-6 text-ink/70">
+                                    {collectionForm.mode === "create"
+                                        ? "创建一个独立的文档与检索空间。"
+                                        : "修改集合名称和描述，嵌入模型保持不变。"}
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+
+                            <div className="space-y-4 p-5">
+                                <label className="block space-y-1.5 text-xs font-black tracking-[0.06em]">
+                                    集合名称
+                                    <Input
+                                        autoFocus
+                                        required
+                                        maxLength={100}
+                                        value={collectionForm.name}
+                                        disabled={savingCollection}
+                                        onChange={event => setCollectionForm({
+                                            ...collectionForm,
+                                            name: event.target.value,
+                                        })}
+                                        className="h-10 rounded-none border-2 border-ink bg-paper text-sm font-semibold tracking-normal focus-visible:ring-marker-blue/35"
+                                    />
+                                </label>
+
+                                <label className="block space-y-1.5 text-xs font-black tracking-[0.06em]">
+                                    集合描述
+                                    <Textarea
+                                        maxLength={1000}
+                                        value={collectionForm.description}
+                                        disabled={savingCollection}
+                                        onChange={event => setCollectionForm({
+                                            ...collectionForm,
+                                            description: event.target.value,
+                                        })}
+                                        className="min-h-24 resize-none rounded-none border-2 border-ink bg-paper text-sm font-medium tracking-normal focus-visible:ring-marker-blue/35"
+                                        placeholder="说明这个集合保存什么内容…"
+                                    />
+                                </label>
+
+                                <div className="space-y-1.5">
+                                    <p className="text-xs font-black tracking-[0.06em]">嵌入模型</p>
+                                    <Select
+                                        value={`${collectionForm.embeddingProvider}::${collectionForm.embeddingModel}`}
+                                        disabled={collectionForm.mode === "edit" || embeddingModelsLoading || savingCollection}
+                                        onValueChange={value => {
+                                            const [embeddingProvider, embeddingModel] = (value as string).split("::")
+                                            setCollectionForm({
+                                                ...collectionForm,
+                                                embeddingProvider,
+                                                embeddingModel,
+                                            })
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-10 w-full rounded-none border-2 border-ink bg-paper px-3 font-mono text-xs disabled:opacity-55">
+                                            <SelectValue>
+                                                {() => collectionForm.embeddingProvider && collectionForm.embeddingModel
+                                                    ? `${collectionForm.embeddingProvider} / ${collectionForm.embeddingModel}`
+                                                    : embeddingModelsLoading ? "正在加载嵌入模型…" : "暂无可用嵌入模型"}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent
+                                            align="start"
+                                            className="rounded-none border-2 border-ink bg-paper p-0 text-ink shadow-[3px_3px_0_var(--kraft)] duration-0 data-open:animate-none data-closed:animate-none"
+                                        >
+                                            {embeddingModelProviders.map(provider => (
+                                                <SelectGroup key={provider.providerCode}>
+                                                    <SelectLabel className="font-black uppercase tracking-[0.1em] text-pencil">
+                                                        {provider.providerCode}
+                                                    </SelectLabel>
+                                                    {provider.models.map(model => (
+                                                        <SelectItem
+                                                            key={`${provider.providerCode}:${model}`}
+                                                            value={`${provider.providerCode}::${model}`}
+                                                            className="rounded-none font-mono text-xs data-highlighted:bg-marker-yellow/45"
+                                                        >
+                                                            {model}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="font-reading text-xs italic leading-5 text-pencil">
+                                        {collectionForm.mode === "edit"
+                                            ? "集合创建后暂不支持更换嵌入模型。"
+                                            : "导入文档后将使用这个模型生成检索向量。"}
+                                    </p>
+                                </div>
+
+                                {(collectionFormError || (collectionForm.mode === "create" && embeddingModelsError)) && (
+                                    <p className="border-l-4 border-destructive bg-destructive/8 px-3 py-2 text-sm font-semibold text-destructive">
+                                        {collectionFormError || embeddingModelsError}
+                                    </p>
+                                )}
+                            </div>
+
+                            <AlertDialogFooter className="m-0 rounded-none border-t border-dashed border-ink/35 bg-kraft/10 p-4">
+                                <AlertDialogCancel
+                                    type="button"
+                                    disabled={savingCollection}
+                                    className="h-9 rounded-none border-2 border-ink bg-paper px-4 font-black"
+                                >
+                                    取消
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    type="submit"
+                                    disabled={savingCollection || (
+                                        collectionForm.mode === "create" && (
+                                            embeddingModelsLoading || !collectionForm.embeddingProvider || !collectionForm.embeddingModel
+                                        )
+                                    )}
+                                    className="h-9 rounded-none border-2 border-ink bg-marker-yellow px-4 font-black text-ink shadow-[2px_2px_0_var(--ink)] transition-none hover:bg-marker-yellow/80 active:translate-y-px active:shadow-none"
+                                >
+                                    {savingCollection ? (
+                                        <>
+                                            <LoaderCircle className="animate-spin motion-reduce:animate-none"/>
+                                            正在保存
+                                        </>
+                                    ) : collectionForm.mode === "create" ? (
+                                        <>
+                                            <Plus/>
+                                            创建集合
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check/>
+                                            保存修改
+                                        </>
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </form>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
+            {collectionToDelete && (
+                <AlertDialog
+                    open
+                    onOpenChange={(open) => {
+                        if (!open && !deletingCollection) setCollectionToDelete(null)
+                    }}
+                >
+                    <AlertDialogContent className="gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-red bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
+                        <AlertDialogHeader className="grid grid-cols-[auto_1fr] grid-rows-[auto_auto] place-items-start gap-x-3 gap-y-1 border-b border-dashed border-ink/35 p-5 text-left">
+                            <AlertDialogMedia className="row-span-2 mb-0 rounded-none border-2 border-ink bg-marker-red/15">
+                                <Trash2 className="size-5 text-destructive"/>
+                            </AlertDialogMedia>
+                            <AlertDialogTitle className="font-display text-xl font-black">
+                                删除这个集合？
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-semibold leading-6 text-ink/70">
+                                集合中的文档、本地文件、检索片段、向量数据和 AI 对话都会被删除，此操作无法撤销。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <div className="p-5">
+                            <p className="wrap-break-word border-l-4 border-marker-red bg-marker-red/8 px-3 py-2 font-mono text-sm font-black">
+                                {collectionToDelete.name}
+                            </p>
+                            {collectionToDelete.id === selectedCollectionId && (
+                                <p className="mt-3 text-xs font-semibold leading-5 text-pencil">
+                                    当前正在查看这个集合；未保存的正文修改也会被放弃。
+                                </p>
+                            )}
+                            {collectionDeleteError && (
+                                <p className="mt-4 border-l-4 border-destructive bg-destructive/8 px-3 py-2 text-sm font-semibold text-destructive">
+                                    {collectionDeleteError}
+                                </p>
+                            )}
+                        </div>
+
+                        <AlertDialogFooter className="m-0 rounded-none border-t border-dashed border-ink/35 bg-kraft/10 p-4">
+                            <AlertDialogCancel
+                                disabled={deletingCollection}
+                                className="h-9 rounded-none border-2 border-ink bg-paper px-4 font-black"
+                            >
+                                取消
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                type="button"
+                                variant="destructive"
+                                disabled={deletingCollection}
+                                onClick={() => {
+                                    setDeletingCollection(true)
+                                    setCollectionDeleteError(null)
+
+                                    deleteCollection(collectionToDelete.id)
+                                        .then(() => setCollectionToDelete(null))
+                                        .catch(error => setCollectionDeleteError(
+                                            error instanceof Error ? error.message : "删除集合失败",
+                                        ))
+                                        .finally(() => setDeletingCollection(false))
+                                }}
+                                className="h-9 rounded-none border-2 border-ink bg-marker-red px-4 font-black text-ink shadow-[2px_2px_0_var(--ink)] transition-none hover:bg-marker-red/80 active:translate-y-px active:shadow-none"
+                            >
+                                {deletingCollection ? (
+                                    <>
+                                        <LoaderCircle className="animate-spin motion-reduce:animate-none"/>
+                                        正在删除
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2/>
+                                        确认删除
+                                    </>
+                                )}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
             {documentToDelete && (
                 <AlertDialog
                     open
@@ -639,7 +1000,7 @@ function CollectionItems({
                         if (!open && !deleting) setDocumentToDelete(null)
                     }}
                 >
-                    <AlertDialogContent className="rotate-[-0.15deg] gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-red bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
+                    <AlertDialogContent className="gap-0 rounded-none border-2 border-t-4 border-ink border-t-marker-red bg-paper p-0 text-ink ring-0 shadow-[5px_5px_0_var(--kraft)]">
                         <AlertDialogHeader className="grid grid-cols-[auto_1fr] grid-rows-[auto_auto] place-items-start gap-x-3 gap-y-1 border-b border-dashed border-ink/35 p-5 text-left">
                             <AlertDialogMedia className="row-span-2 mb-0 rounded-none border-2 border-ink bg-marker-red/15">
                                 <Trash2 className="size-5 text-destructive"/>

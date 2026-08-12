@@ -8,6 +8,23 @@ export interface KnowledgeCollection {
     updateTime: string
 }
 
+export interface CreateCollectionRequest {
+    name: string
+    description: string
+    embeddingProvider: string
+    embeddingModel: string
+}
+
+export interface UpdateCollectionRequest {
+    name: string
+    description: string
+}
+
+export interface EmbeddingModelProvider {
+    providerCode: string
+    models: string[]
+}
+
 export type DocumentType = 'PDF' | 'PLAIN_TEXT' | 'MARKDOWN'
 
 //todo 这两个类型真的好吗

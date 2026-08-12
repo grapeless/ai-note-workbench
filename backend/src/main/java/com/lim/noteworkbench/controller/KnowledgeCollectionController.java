@@ -2,7 +2,9 @@ package com.lim.noteworkbench.controller;
 
 import com.lim.noteworkbench.common.response.Result;
 import com.lim.noteworkbench.model.dto.CreateCollectionDTO;
+import com.lim.noteworkbench.model.dto.UpdateCollectionDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeCollection;
+import com.lim.noteworkbench.model.vo.EmbeddingModelProviderVO;
 import com.lim.noteworkbench.service.KnowledgeCollectionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,5 +45,18 @@ public class KnowledgeCollectionController {
     public Result<Void> delete(@Parameter(description = "集合 ID") @PathVariable Long id) {
         knowledgeCollectionService.delete(id);
         return Result.success();
+    }
+
+    @Operation(summary = "修改集合")
+    @PutMapping("/{id}")
+    public Result<KnowledgeCollection> update(@Parameter(description = "集合 ID") @PathVariable Long id,
+                                              @Valid @RequestBody UpdateCollectionDTO request) {
+        return Result.success(knowledgeCollectionService.update(id, request));
+    }
+
+    @Operation(summary = "查询可用嵌入模型")
+    @GetMapping("/embedding-models")
+    public Result<List<EmbeddingModelProviderVO>> listEmbeddingModels() {
+        return Result.success(knowledgeCollectionService.listEmbeddingModels());
     }
 }

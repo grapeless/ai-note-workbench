@@ -5,7 +5,10 @@ import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.properties.EmbeddingModelProperties;
 import com.lim.noteworkbench.mapper.KnowledgeCollectionMapper;
 import com.lim.noteworkbench.model.dto.CreateCollectionDTO;
+import com.lim.noteworkbench.model.dto.UpdateCollectionDTO;
 import com.lim.noteworkbench.model.entity.KnowledgeCollection;
+import com.lim.noteworkbench.model.vo.EmbeddingModelProviderVO;
+import com.lim.noteworkbench.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +22,7 @@ public class KnowledgeCollectionService {
     private final KnowledgeCollectionMapper knowledgeCollectionMapper;
     private final EmbeddingModelProperties embeddingModelProperties;
     private final ChatHistoryService chatHistoryService;
+    private final StorageService storageService;
 
     @Transactional
     public KnowledgeCollection create(CreateCollectionDTO request) {
@@ -59,9 +63,30 @@ public class KnowledgeCollectionService {
         return knowledgeCollectionMapper.findAll();
     }
 
+    public List<EmbeddingModelProviderVO> listEmbeddingModels() {
+        return embeddingModelProperties.getProviders().entrySet().stream()
+                .map(entry -> new EmbeddingModelProviderVO(
+                        entry.getKey(),
+                        entry.getValue().getModels().stream()
+                                .map(EmbeddingModelProperties.ModelProperties::getCode)
+                                .toList()
+                ))
+                .toList();
+    }
+
+    public KnowledgeCollection update(Long id, UpdateCollectionDTO request) {
+        KnowledgeCollection collection = getById(id);
+        collection.setName(request.name());
+        collection.setDescription(request.description());
+        knowledgeCollectionMapper.update(collection);
+
+        return knowledgeCollectionMapper.findById(id);
+    }
+
     @Transactional
     public void delete(Long id) {
         chatHistoryService.deleteByCollectionId(id);
         knowledgeCollectionMapper.deleteById(id);
+        storageService.deleteCollection(id);
     }
 }
