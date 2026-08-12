@@ -25,6 +25,9 @@ public record ChatRequestDTO(
         @NotNull UUID conversationId,
 
         @Schema(description = "本轮助手消息 ID")
-        @NotNull UUID assistantMessageId
+        @NotNull UUID assistantMessageId,
+
+        @Schema(description = "当前选中文档，可以为空表示还未选择文档")
+        Long selectedDocumentId
 ) {
 }

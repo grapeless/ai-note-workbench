@@ -350,7 +350,8 @@ function AiPanel() {
             modelCode: selectedModel.modelCode,
             message: content,
             conversationId,
-            assistantMessageId
+            assistantMessageId,
+            selectedDocumentId
         }, chatResponse => {
             //每收到一个流式事件就执行一次
             setChatMessages(current => applyChatResponse(current, assistantMessageId, chatResponse))

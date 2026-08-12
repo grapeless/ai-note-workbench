@@ -5,7 +5,9 @@ import com.lim.noteworkbench.common.response.ResultCode;
 import com.lim.noteworkbench.config.ChatClientConfig.ChatClientRegistry;
 import com.lim.noteworkbench.config.properties.ChatModelProperties;
 import com.lim.noteworkbench.model.constant.AgentToolContextKey;
+import com.lim.noteworkbench.model.constant.KnowledgePrompt;
 import com.lim.noteworkbench.model.dto.ChatRequestDTO;
+import com.lim.noteworkbench.model.entity.KnowledgeDocument;
 import com.lim.noteworkbench.model.vo.ChatResponseVO;
 import com.lim.noteworkbench.model.vo.ModelProviderVO;
 import com.lim.noteworkbench.tool.ResearchTools;
@@ -33,6 +35,7 @@ public class ChatService {
     private final ChatHistoryService chatHistoryService;
     private final ResearchTools researchTools;
     private final WritingTools writingTools;
+    private final KnowledgeDocumentService knowledgeDocumentService;
 
     public Flux<ChatResponseVO> chat(ChatRequestDTO chatRequestDTO) {
         //1.根据提供商获取对应默认chatClient
@@ -47,8 +50,13 @@ public class ChatService {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "不支持的对话模型：" + chatRequestDTO.modelCode());
 
         //3.获取回答
+        KnowledgeDocument selectedKnowledgeDocument = chatRequestDTO.selectedDocumentId() == null ? null
+                : knowledgeDocumentService.getByIdInCollection(chatRequestDTO.collectionId(), chatRequestDTO.selectedDocumentId());
         Map<String, Integer> reasoningLengths = new HashMap<>();
         Flux<ChatResponseVO> chatResponseFlux = chatClient.prompt()
+                .system(promptSystemSpec -> promptSystemSpec.param(
+                        "workbenchContext",
+                        KnowledgePrompt.buildWorkbenchContext(selectedKnowledgeDocument)))
                 .user(chatRequestDTO.message())
                 .tools(researchTools, writingTools)
                 .toolContext(Map.of(

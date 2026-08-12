@@ -64,6 +64,7 @@ export interface ChatRequest {
     message: string
     conversationId: string
     assistantMessageId: string
+    selectedDocumentId: number | null
 }
 
 export interface ChatResponse {
