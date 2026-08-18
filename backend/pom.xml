@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.lim</groupId>
     <artifactId>note-workbench</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.0</version>
     <name>note-workbench</name>
     <description>Local-first AI knowledge base workbench for notes and documents</description>
     <url>https://github.com/grapeless/ai-note-workbench</url>
