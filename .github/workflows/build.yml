@@ -18,10 +18,9 @@ permissions:
   contents: read
 
 env:
-  REGISTRY: ghcr.io
-  # 前后端使用独立的 GHCR 包，才能分别构建和清理。
-  FRONTEND_IMAGE: ghcr.io/grapeless/ai-note-workbench-frontend
-  BACKEND_IMAGE: ghcr.io/grapeless/ai-note-workbench-backend
+  REGISTRY: ccr.ccs.tencentyun.com
+  FRONTEND_IMAGE: ccr.ccs.tencentyun.com/ai-note-workbench/note-workbench-frontend
+  BACKEND_IMAGE: ccr.ccs.tencentyun.com/ai-note-workbench/note-workbench-backend
 
 jobs:
   changes:
@@ -80,8 +79,14 @@ jobs:
             if grep -q '^backend/' <<< "$changed_files"; then
               backend=true
             fi
-            # Compose 或部署脚本变化都需要重新应用生产部署配置。
-            if grep -Eq '^(docker-compose\.yml|\.github/workflows/build\.yml)$' <<< "$changed_files"; then
+            # 构建工作流变化时重新构建两端，避免新仓库或新构建规则没有对应镜像。
+            if grep -q '^\.github/workflows/build\.yml$' <<< "$changed_files"; then
+              frontend=true
+              backend=true
+              compose=true
+            fi
+            # Compose 变化只需重新应用生产部署配置。
+            if grep -q '^docker-compose\.yml$' <<< "$changed_files"; then
               compose=true
             fi
           fi
@@ -99,7 +104,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -107,12 +111,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to GHCR
+      - name: Log in to TCR
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.TCR_USERNAME }}
+          password: ${{ secrets.TCR_PASSWORD }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v7
@@ -128,7 +132,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-          # 单平台部署不生成证明和 SBOM，避免 GHCR 出现额外无标签清单。
+          # 单平台部署不生成证明和 SBOM，避免仓库出现额外的无标签清单。
           provenance: false
           sbom: false
           # scope 将前端缓存与后端缓存隔离。
@@ -142,7 +146,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -150,12 +153,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to GHCR
+      - name: Log in to TCR
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.TCR_USERNAME }}
+          password: ${{ secrets.TCR_PASSWORD }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v7
@@ -171,7 +174,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-          # 单平台部署不生成证明和 SBOM，避免 GHCR 出现额外无标签清单。
+          # 单平台部署不生成证明和 SBOM，避免仓库出现额外的无标签清单。
           provenance: false
           sbom: false
           # scope 将后端缓存与前端缓存隔离。
@@ -201,7 +204,6 @@ jobs:
       SERVER_USER: root
     permissions:
       contents: read
-      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -228,17 +230,17 @@ jobs:
           docker-compose.yml
           "$SERVER_USER@$SERVER_HOST:/root/project-prod/docker-compose.yml.next"
 
-      - name: Log server in to GHCR
+      - name: Log server in to TCR
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          GHCR_USER: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TCR_USERNAME: ${{ secrets.TCR_USERNAME }}
+          TCR_PASSWORD: ${{ secrets.TCR_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$GHCR_TOKEN" |
+          printf '%s' "$TCR_PASSWORD" |
             ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" \
-              docker login ghcr.io --username "$GHCR_USER" --password-stdin
+              docker login "$REGISTRY" --username "$TCR_USERNAME" --password-stdin
 
       - name: Deploy changed services
         env:
@@ -320,52 +322,3 @@ jobs:
           docker image prune --all --force \
             --filter "label=org.opencontainers.image.source=https://github.com/grapeless/ai-note-workbench"
           REMOTE
-
-  cleanup_registry:
-    name: Remove old GHCR versions
-    needs:
-      - changes
-      - deploy
-    if: >-
-      always() &&
-      needs.deploy.result == 'success' &&
-      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Delete versions not tagged latest
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
-          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # 用户与组织拥有的 GHCR 包使用不同的 REST API 路径。
-          if [[ "$(gh api "/users/$GITHUB_REPOSITORY_OWNER" --jq '.type')" == "Organization" ]]; then
-            package_scope="orgs"
-          else
-            package_scope="users"
-          fi
-
-          delete_old_versions() {
-            local package="$1"
-            # 当前版本带有 latest；没有 latest 的版本均属于旧构建。
-            gh api --paginate \
-              "/$package_scope/$GITHUB_REPOSITORY_OWNER/packages/container/$package/versions?per_page=100" \
-              --jq '.[] | select(((.metadata.container.tags // []) | index("latest")) == null) | .id' |
-            while read -r version_id; do
-              [[ -z "$version_id" ]] || gh api --method DELETE \
-                "/$package_scope/$GITHUB_REPOSITORY_OWNER/packages/container/$package/versions/$version_id"
-            done
-          }
-
-          if [[ "$FRONTEND_CHANGED" == "true" ]]; then
-            delete_old_versions ai-note-workbench-frontend
-          fi
-          if [[ "$BACKEND_CHANGED" == "true" ]]; then
-            delete_old_versions ai-note-workbench-backend
-          fi

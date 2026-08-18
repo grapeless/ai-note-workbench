@@ -12,10 +12,6 @@ COPY index.html tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.t
 COPY public ./public
 COPY src ./src
 
-# 生产环境统一请求同源 /api，由运行阶段的 Nginx 转发给后端。
-ARG VITE_API_BASE_URL=/api
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-
 RUN npm run build
 
 # 运行阶段

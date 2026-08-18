@@ -14,18 +14,13 @@ app:
   ai:
     chat:
       providers:
-        default:
-          base-url: ${CHAT_BASE_URL}
-          api-key: ${CHAT_API_KEY}
-          default-model: ${CHAT_MODEL}
-          models:
-            - code: ${CHAT_MODEL}
+        deepseek:
+          api-key: ${CHAT_DEEPSEEK_API_KEY}
+        dashscope:
+          api-key: ${CHAT_DASHSCOPE_API_KEY}
     embedding:
       providers:
-        default:
-          base-url: ${EMBEDDING_BASE_URL}
-          api-key: ${EMBEDDING_API_KEY}
-          models:
-            - code: ${EMBEDDING_MODEL}
-              dimension: ${EMBEDDING_DIMENSION}
-              vector-table-name: ${EMBEDDING_VECTOR_TABLE}
+        siliconflow:
+          api-key: ${EMBEDDING_SILICONFLOW_API_KEY}
+        dashscope:
+          api-key: ${EMBEDDING_DASHSCOPE_API_KEY}

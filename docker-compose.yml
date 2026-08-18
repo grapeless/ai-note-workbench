@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/grapeless/ai-note-workbench-frontend:${FRONTEND_IMAGE_TAG:-latest}
+    image: ccr.ccs.tencentyun.com/ai-note-workbench/note-workbench-frontend:${FRONTEND_IMAGE_TAG:-latest}
     ports:
       - "${FRONTEND_BIND_ADDRESS:-0.0.0.0}:${FRONTEND_PORT:-80}:80"
     # Nginx 启动时需要通过 Compose 内部 DNS 找到 backend 服务。
@@ -47,21 +47,17 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/grapeless/ai-note-workbench-backend:${BACKEND_IMAGE_TAG:-latest}
+    image: ccr.ccs.tencentyun.com/ai-note-workbench/note-workbench-backend:${BACKEND_IMAGE_TAG:-latest}
     environment:
       # 激活 application.yml 与 application-prod.yml。
       SPRING_PROFILES_ACTIVE: prod
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
       # Compose 服务名同时也是容器内部 DNS 名称。
-      CHAT_BASE_URL: "${CHAT_BASE_URL:-}"
-      CHAT_API_KEY: "${CHAT_API_KEY:-}"
-      CHAT_MODEL: "${CHAT_MODEL:-}"
-      EMBEDDING_BASE_URL: "${EMBEDDING_BASE_URL:-}"
-      EMBEDDING_API_KEY: "${EMBEDDING_API_KEY:-}"
-      EMBEDDING_MODEL: "${EMBEDDING_MODEL:-}"
-      EMBEDDING_DIMENSION: "${EMBEDDING_DIMENSION:-1024}"
-      EMBEDDING_VECTOR_TABLE: "${EMBEDDING_VECTOR_TABLE:-vector_store_siliconflow_bge_m3}"
+      CHAT_DEEPSEEK_API_KEY: "${CHAT_DEEPSEEK_API_KEY:?Set CHAT_DEEPSEEK_API_KEY in .env}"
+      CHAT_DASHSCOPE_API_KEY: "${CHAT_DASHSCOPE_API_KEY:?Set CHAT_DASHSCOPE_API_KEY in .env}"
+      EMBEDDING_SILICONFLOW_API_KEY: "${EMBEDDING_SILICONFLOW_API_KEY:?Set EMBEDDING_SILICONFLOW_API_KEY in .env}"
+      EMBEDDING_DASHSCOPE_API_KEY: "${EMBEDDING_DASHSCOPE_API_KEY:?Set EMBEDDING_DASHSCOPE_API_KEY in .env}"
     # 后端只供 Compose 网络内的前端容器访问，不映射到宿主机端口。
     expose:
       - "8080"

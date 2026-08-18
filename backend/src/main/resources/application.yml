@@ -24,6 +24,36 @@ mybatis:
 app:
   storage:
     root: ./storage
+  ai:
+    chat:
+      providers:
+        deepseek:
+          base-url: https://api.deepseek.com
+          default-model: deepseek-v4-flash
+          models:
+            - code: deepseek-v4-flash
+            - code: deepseek-v4-pro
+        dashscope:
+          base-url: https://llm-59ufx4vz8lolmeih.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+          default-model: qwen3.7-plus
+          models:
+            - code: qwen3.7-plus
+            - code: glm-5.2
+            - code: deepseek-v4-pro
+    embedding:
+      providers:
+        siliconflow:
+          base-url: https://api.siliconflow.cn/v1
+          models:
+            - code: BAAI/bge-m3
+              dimension: 1024
+              vector-table-name: vector_store_siliconflow_bge_m3
+        dashscope:
+          base-url: https://llm-59ufx4vz8lolmeih.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+          models:
+            - code: qwen3.7-text-embedding
+              dimension: 1024
+              vector-table-name: vector_store_dashscope_qwen37
 
 logging:
   file:
