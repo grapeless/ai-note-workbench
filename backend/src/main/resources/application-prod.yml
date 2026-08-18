@@ -24,3 +24,12 @@ app:
           api-key: ${EMBEDDING_SILICONFLOW_API_KEY}
         dashscope:
           api-key: ${EMBEDDING_DASHSCOPE_API_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

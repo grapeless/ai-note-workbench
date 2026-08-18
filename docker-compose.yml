@@ -21,17 +21,19 @@ services:
     image: redis:8
     environment:
       REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
-    # $$ 将变量留给容器内的 Shell 展开，避免 Compose 提前解析。
+    # 必须让 redis-server 成为入口脚本的首个参数，Redis 8 才会自动加载 Search、JSON 等内置能力。
     command:
-      - /bin/sh
-      - -c
-      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG && redis-cli -e --no-auth-warning -a \"$$REDIS_PASSWORD\" FT._LIST >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,6 +65,12 @@ services:
       - "8080"
     volumes:
       - backend_storage:/app/storage
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--output", "/dev/null", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     # 完整启动时等待 PostgreSQL 和 Redis 通过健康检查。
     depends_on:
       postgres:

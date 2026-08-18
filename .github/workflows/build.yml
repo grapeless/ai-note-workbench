@@ -296,22 +296,27 @@ jobs:
             --file /root/project-prod/docker-compose.yml
           )
 
-          missing_infrastructure=()
-          for service in postgres redis; do
-            # 只启动当前未运行的基础设施；正常运行时不会随应用部署而重启。
-            if [[ -z "$("${compose[@]}" ps -q "$service")" ]]; then
-              missing_infrastructure+=("$service")
+          if [[ "$compose_changed" == "true" ]]; then
+            # 应用基础设施配置差异；配置未变化的 PostgreSQL 不会被重建。
+            "${compose[@]}" up -d --wait --wait-timeout 120 postgres redis
+          else
+            missing_infrastructure=()
+            for service in postgres redis; do
+              # 应用镜像更新时只补齐缺失的基础设施，不重启正常运行的数据库。
+              if [[ -z "$("${compose[@]}" ps -q "$service")" ]]; then
+                missing_infrastructure+=("$service")
+              fi
+            done
+            if (( ${#missing_infrastructure[@]} > 0 )); then
+              "${compose[@]}" up -d --wait --wait-timeout 120 "${missing_infrastructure[@]}"
             fi
-          done
-          if (( ${#missing_infrastructure[@]} > 0 )); then
-            "${compose[@]}" up -d --wait --wait-timeout 120 "${missing_infrastructure[@]}"
           fi
 
           "${compose[@]}" pull "${services[@]}"
           # --no-deps 防止更新前后端时连带重建 PostgreSQL 或 Redis。
           "${compose[@]}" up -d --no-deps --wait --wait-timeout 120 "${services[@]}"
 
-          # 这里只确认容器进程仍在运行，不等价于业务接口健康检查。
+          # backend 定义了 Actuator 健康检查；--wait 会在服务真正健康后才返回。
           for service in "${services[@]}"; do
             container_id="$("${compose[@]}" ps -q "$service")"
             [[ -n "$container_id" ]]

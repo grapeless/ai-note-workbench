@@ -71,6 +71,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <!--生产容器健康检查-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!--AspectJ风格 AOP，用于记录日志-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
