@@ -17,7 +17,7 @@ export function ProposalCard({proposal, applying, disabled, onApply}: ProposalCa
     const applied = proposal.status === "APPLIED"
 
     return (
-        <section className="rotate-[-0.25deg] border-2 border-ink bg-marker-yellow/10 shadow-[3px_3px_0_var(--kraft)]">
+        <section className="border-2 border-ink bg-marker-yellow/10 shadow-[3px_3px_0_var(--kraft)]">
             <div className="flex items-start gap-3 border-b border-dashed border-ink/35 px-3 py-3">
                 <span className="grid size-8 shrink-0 place-items-center border-2 border-ink bg-paper">
                     <FilePenLine className="size-4"/>
