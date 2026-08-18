@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/note_workbench
+    username: note_workbench_user
+    password: ${POSTGRES_PASSWORD}
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: ${REDIS_PASSWORD}
+app:
+  storage:
+    root: /app/storage
+  ai:
+    chat:
+      providers:
+        default:
+          base-url: ${CHAT_BASE_URL}
+          api-key: ${CHAT_API_KEY}
+          default-model: ${CHAT_MODEL}
+          models:
+            - code: ${CHAT_MODEL}
+    embedding:
+      providers:
+        default:
+          base-url: ${EMBEDDING_BASE_URL}
+          api-key: ${EMBEDDING_API_KEY}
+          models:
+            - code: ${EMBEDDING_MODEL}
+              dimension: ${EMBEDDING_DIMENSION}
+              vector-table-name: ${EMBEDDING_VECTOR_TABLE}

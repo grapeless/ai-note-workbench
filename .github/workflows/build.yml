@@ -1,0 +1,371 @@
+name: Build and deploy
+
+# 触发与串行控制
+on:
+  push:
+    branches:
+      - main  # 推送 main 自动执行
+  # 允许从 Actions 页面手动执行；手动执行会构建并部署前后端。
+  workflow_dispatch:
+
+# 防止两次生产部署同时运行
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  # 默认令牌只读；需要推送或删除镜像的 job 会单独提升 packages 权限。
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  # 前后端使用独立的 GHCR 包，才能分别构建和清理。
+  FRONTEND_IMAGE: ghcr.io/grapeless/ai-note-workbench-frontend
+  BACKEND_IMAGE: ghcr.io/grapeless/ai-note-workbench-backend
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      backend: ${{ steps.changes.outputs.backend }}
+      compose: ${{ steps.changes.outputs.compose }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # 变更检测需要读取上一次提交，不能使用默认的浅克隆。
+          fetch-depth: 0
+
+      - name: Detect changed components
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            frontend=true
+            backend=true
+            compose=false
+          else
+            # 新建分支时 before 可能全为 0，此时把当前提交中的文件都视为新增。
+            if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+              changed_files="$(git ls-tree --name-only -r "$GITHUB_SHA")"
+            else
+              # amend/强推会让 before 指向不再属于分支历史的旧提交，先尝试按 SHA 单独获取。
+              if ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+                git fetch --no-tags --depth=1 origin "$BEFORE_SHA" || true
+              fi
+
+              if git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+                changed_files="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"
+              else
+                # 旧提交彻底不可获取时无法可靠计算差异，完整构建比漏部署更安全。
+                echo "::warning::Previous commit is unavailable; treating all files as changed."
+                changed_files="$(git ls-tree --name-only -r "$GITHUB_SHA")"
+              fi
+            fi
+
+            frontend=false
+            backend=false
+            compose=false
+
+            if grep -q '^frontend/' <<< "$changed_files"; then
+              frontend=true
+            fi
+            if grep -q '^backend/' <<< "$changed_files"; then
+              backend=true
+            fi
+            # Compose 或部署脚本变化都需要重新应用生产部署配置。
+            if grep -Eq '^(docker-compose\.yml|\.github/workflows/build\.yml)$' <<< "$changed_files"; then
+              compose=true
+            fi
+          fi
+
+          {
+            echo "frontend=$frontend"
+            echo "backend=$backend"
+            echo "compose=$compose"
+          } >> "$GITHUB_OUTPUT"
+
+  build_frontend:
+    name: Build frontend image
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          push: true
+          # 生产服务器是 x86_64，对应 linux/amd64。
+          platforms: linux/amd64
+          # SHA 用于精确部署，latest 标记当前版本；两个标签指向同一镜像。
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          # 单平台部署不生成证明和 SBOM，避免 GHCR 出现额外无标签清单。
+          provenance: false
+          sbom: false
+          # scope 将前端缓存与后端缓存隔离。
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  build_backend:
+    name: Build backend image
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: true
+          # 生产服务器是 x86_64，对应 linux/amd64。
+          platforms: linux/amd64
+          # SHA 用于精确部署，latest 标记当前版本；两个标签指向同一镜像。
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          # 单平台部署不生成证明和 SBOM，避免 GHCR 出现额外无标签清单。
+          provenance: false
+          sbom: false
+          # scope 将后端缓存与前端缓存隔离。
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  deploy:
+    name: Deploy to production
+    needs:
+      - changes
+      - build_frontend
+      - build_backend
+    # 未变化的构建 job 会被 skipped；只有实际执行的构建失败才阻止部署。
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.build_frontend.result == 'success' || needs.build_frontend.result == 'skipped') &&
+      (needs.build_backend.result == 'success' || needs.build_backend.result == 'skipped') &&
+      (needs.changes.outputs.frontend == 'true' ||
+       needs.changes.outputs.backend == 'true' ||
+       needs.changes.outputs.compose == 'true')
+    runs-on: ubuntu-latest
+    # SSH 密钥和服务器地址从 production Environment Secrets 读取。
+    environment: production
+    env:
+      SERVER_PORT: "22"
+      SERVER_USER: root
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Configure SSH
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SERVER_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          # 固定服务器主机公钥，避免跳过 SSH 主机身份校验。
+          printf '%s\n' "$SERVER_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload Compose configuration
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        # 先上传临时文件，远程脚本开始执行后再替换正式 Compose。
+        run: >-
+          scp -P "$SERVER_PORT"
+          docker-compose.yml
+          "$SERVER_USER@$SERVER_HOST:/root/project-prod/docker-compose.yml.next"
+
+      - name: Log server in to GHCR
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" |
+            ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" \
+              docker login ghcr.io --username "$GHCR_USER" --password-stdin
+
+      - name: Deploy changed services
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          COMPOSE_CHANGED: ${{ needs.changes.outputs.compose }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" bash -s -- \
+            "$GITHUB_SHA" "$FRONTEND_CHANGED" "$BACKEND_CHANGED" "$COMPOSE_CHANGED" <<'REMOTE'
+          set -euo pipefail
+
+          image_tag="$1"
+          frontend_changed="$2"
+          backend_changed="$3"
+          compose_changed="$4"
+
+          cd /root/project-prod
+          mv docker-compose.yml.next docker-compose.yml
+
+          # 未构建的服务沿用 latest；发生变化的服务部署本次提交的 SHA。
+          export FRONTEND_IMAGE_TAG=latest
+          export BACKEND_IMAGE_TAG=latest
+
+          if [[ "$backend_changed" == "true" ]]; then
+            export BACKEND_IMAGE_TAG="$image_tag"
+          fi
+          if [[ "$frontend_changed" == "true" ]]; then
+            export FRONTEND_IMAGE_TAG="$image_tag"
+          fi
+
+          # Compose 改动可能同时影响两个应用服务，因此两者都重新应用配置。
+          if [[ "$compose_changed" == "true" ]]; then
+            services=(backend frontend)
+          else
+            services=()
+            if [[ "$backend_changed" == "true" ]]; then
+              services+=(backend)
+            fi
+            if [[ "$frontend_changed" == "true" ]]; then
+              services+=(frontend)
+            fi
+          fi
+
+          compose=(
+            docker compose
+            # 固定项目名，确保始终复用 project-prod 的网络和命名卷。
+            --project-name project-prod
+            --env-file /root/project-prod/.env
+            --file /root/project-prod/docker-compose.yml
+          )
+
+          missing_infrastructure=()
+          for service in postgres redis; do
+            # 只启动当前未运行的基础设施；正常运行时不会随应用部署而重启。
+            if [[ -z "$("${compose[@]}" ps -q "$service")" ]]; then
+              missing_infrastructure+=("$service")
+            fi
+          done
+          if (( ${#missing_infrastructure[@]} > 0 )); then
+            "${compose[@]}" up -d --wait --wait-timeout 120 "${missing_infrastructure[@]}"
+          fi
+
+          "${compose[@]}" pull "${services[@]}"
+          # --no-deps 防止更新前后端时连带重建 PostgreSQL 或 Redis。
+          "${compose[@]}" up -d --no-deps --wait --wait-timeout 120 "${services[@]}"
+
+          # 这里只确认容器进程仍在运行，不等价于业务接口健康检查。
+          for service in "${services[@]}"; do
+            container_id="$("${compose[@]}" ps -q "$service")"
+            [[ -n "$container_id" ]]
+            [[ "$(docker inspect --format '{{.State.Running}}' "$container_id")" == "true" ]]
+          done
+
+          # 只清理带当前仓库来源标签且未被容器使用的旧应用镜像。
+          docker image prune --all --force \
+            --filter "label=org.opencontainers.image.source=https://github.com/grapeless/ai-note-workbench"
+          REMOTE
+
+  cleanup_registry:
+    name: Remove old GHCR versions
+    needs:
+      - changes
+      - deploy
+    if: >-
+      always() &&
+      needs.deploy.result == 'success' &&
+      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Delete versions not tagged latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 用户与组织拥有的 GHCR 包使用不同的 REST API 路径。
+          if [[ "$(gh api "/users/$GITHUB_REPOSITORY_OWNER" --jq '.type')" == "Organization" ]]; then
+            package_scope="orgs"
+          else
+            package_scope="users"
+          fi
+
+          delete_old_versions() {
+            local package="$1"
+            # 当前版本带有 latest；没有 latest 的版本均属于旧构建。
+            gh api --paginate \
+              "/$package_scope/$GITHUB_REPOSITORY_OWNER/packages/container/$package/versions?per_page=100" \
+              --jq '.[] | select(((.metadata.container.tags // []) | index("latest")) == null) | .id' |
+            while read -r version_id; do
+              [[ -z "$version_id" ]] || gh api --method DELETE \
+                "/$package_scope/$GITHUB_REPOSITORY_OWNER/packages/container/$package/versions/$version_id"
+            done
+          }
+
+          if [[ "$FRONTEND_CHANGED" == "true" ]]; then
+            delete_old_versions ai-note-workbench-frontend
+          fi
+          if [[ "$BACKEND_CHANGED" == "true" ]]; then
+            delete_old_versions ai-note-workbench-backend
+          fi
