@@ -137,9 +137,9 @@ npm run dev
 
 ## 容器部署说明
 
-当前根目录的 `docker-compose.yml` 服务于项目维护者的生产部署，前后端镜像来自腾讯云 TCR。通用的开源镜像分发与 Compose 部署方案仍在整理中；在此之前，外部使用者建议按“本地开发”章节从源码运行。
+当前根目录的 `docker-compose.yml` 服务于项目维护者的生产部署，前后端镜像来自腾讯云 TCR。前端镜像运行 Caddy，负责 HTTPS、Basic Auth、React 静态资源和 `/api` 反向代理。通用的开源镜像分发与 Compose 部署方案仍在整理中；在此之前，外部使用者建议按“本地开发”章节从源码运行。
 
-生产发布由 GitHub Actions 完成：GitHub Runner 构建前后端镜像并推送到 TCR，随后通过 SSH 让服务器只拉取并更新发生变化的应用容器。PostgreSQL 和 Redis 正常运行时不会随应用部署重启。
+生产发布由 GitHub Actions 完成：GitHub Runner 构建前后端镜像并推送到 TCR，随后通过 SSH 让服务器只拉取并更新发生变化的应用容器。PostgreSQL 和 Redis 正常运行时不会随应用部署重启。当前维护者部署同时支持正式域名入口和使用短期证书的临时公网 IP 入口，配置与验证方法见 [腾讯云生产部署指南](docs/deployment/tencent-cloud.md)。
 
 ## 项目结构
 

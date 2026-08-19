@@ -1,29 +1,49 @@
+{
+	# 直接访问 IP 的客户端通常不发送 SNI；此时默认选择公网 IP 证书。
+	default_sni {$PUBLIC_IP}
+}
+
+(app) {
+	# 域名和公网 IP 共用一层入口保护。
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_PASSWORD_HASH}
+	}
+
+	respond /healthz 200
+
+	# handle_path 会移除 /api 前缀；流式响应由 Caddy 自动转发，无需单独配置 SSE。
+	handle_path /api/* {
+		reverse_proxy backend:8080 {
+			# Basic Auth 仅用于入口保护，不把认证头继续传给业务后端。
+			header_up -Authorization
+		}
+	}
+
+	handle {
+		root * /srv
+
+		# Vite 资源文件名包含内容哈希，可以长期缓存；入口页必须及时检查更新。
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "no-cache"
+
+		# 不存在实体文件时返回入口页，支持 React Router 刷新子路由。
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# 备案完成后的正式域名入口使用 Caddy 默认的证书自动化策略。
 {$APP_DOMAIN} {
-    # 健康检查不要求认证，其余页面和接口共用一层入口保护。
-    @protected not path /healthz
-    basic_auth @protected {
-        {$BASIC_AUTH_USER} {$BASIC_AUTH_PASSWORD_HASH}
-    }
+	import app
+}
 
-    respond /healthz 200
+# 公网 IP 使用 Let's Encrypt 短期证书，仅作为域名备案期间的临时入口。
+{$PUBLIC_IP} {
+	tls {
+		issuer acme {
+			profile shortlived
+		}
+	}
 
-    # handle_path 会移除 /api 前缀；流式响应由 Caddy 自动转发，无需单独配置 SSE。
-    handle_path /api/* {
-        reverse_proxy backend:8080 {
-            # Basic Auth 仅用于入口保护，不把认证头继续传给业务后端。
-            header_up -Authorization
-        }
-    }
-
-    handle {
-        root * /srv
-
-        # Vite 资源文件名包含内容哈希，可以长期缓存；入口页必须及时检查更新。
-        header /assets/* Cache-Control "public, max-age=31536000, immutable"
-        header /index.html Cache-Control "no-cache"
-
-        # 不存在实体文件时返回入口页，支持 React Router 刷新子路由。
-        try_files {path} /index.html
-        file_server
-    }
+	import app
 }

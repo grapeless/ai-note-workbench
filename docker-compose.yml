@@ -43,6 +43,7 @@ services:
     image: ccr.ccs.tencentyun.com/ai-note-workbench/note-workbench-frontend:${FRONTEND_IMAGE_TAG:-latest}
     environment:
       APP_DOMAIN: "${APP_DOMAIN:?Set APP_DOMAIN in .env}"
+      PUBLIC_IP: "${PUBLIC_IP:?Set PUBLIC_IP in .env}"
       BASIC_AUTH_USER: "${BASIC_AUTH_USER:?Set BASIC_AUTH_USER in .env}"
       BASIC_AUTH_PASSWORD_HASH: "${BASIC_AUTH_PASSWORD_HASH:?Set BASIC_AUTH_PASSWORD_HASH in .env}"
     ports:

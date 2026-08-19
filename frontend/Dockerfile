@@ -15,7 +15,7 @@ COPY src ./src
 RUN npm run build
 
 # 运行阶段
-FROM caddy:2-alpine
+FROM caddy:2.11.4-alpine
 
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv
