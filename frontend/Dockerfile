@@ -15,12 +15,10 @@ COPY src ./src
 RUN npm run build
 
 # 运行阶段
-FROM nginx:1.28-alpine
+FROM caddy:2-alpine
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
 
 # 仅声明容器监听端口；对宿主机的端口映射由 Docker Compose 决定。
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 80 443

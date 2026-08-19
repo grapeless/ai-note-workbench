@@ -10,7 +10,7 @@
 ## 项目状态
 
 > [!IMPORTANT]
-> 项目仍处于早期开发阶段，数据结构、配置和交互可能发生变化。当前定位为单用户、本地优先的研究型工具，尚未提供用户认证，不建议未经额外访问控制直接暴露到公网。
+> 项目仍处于早期开发阶段，数据结构、配置和交互可能发生变化。当前定位为单用户、本地优先的研究型工具，尚未提供应用级用户体系。维护者的生产部署通过 Caddy Basic Auth 提供入口保护，但它不等同于多用户权限管理。
 
 AI Note Workbench 希望把文档管理、知识库检索和 AI 协作放在同一个工作台中：原始文件保存在本地存储，结构化数据与向量索引由 PostgreSQL 和 pgvector 管理，对话状态由 Redis 辅助持久化，模型请求则通过可配置的 AI Provider 发出。
 
@@ -32,22 +32,21 @@ AI Note Workbench 希望把文档管理、知识库检索和 AI 协作放在同�
 | 前端 | React、TypeScript、Vite、Tailwind CSS、Base UI、Zustand |
 | 后端 | Java 21、Spring Boot、Spring AI、MyBatis、Flyway |
 | 数据 | PostgreSQL、pgvector、Redis、本地文件存储 |
-| 部署 | Docker、Docker Compose、Nginx、GitHub Actions、腾讯云 TCR |
+| 部署 | Docker、Docker Compose、Caddy、GitHub Actions、腾讯云 TCR |
 
 ## 架构概览
 
 ```mermaid
 flowchart LR
-    Browser[浏览器] --> Nginx[Nginx]
-    Nginx -->|静态资源| Web[React SPA]
-    Nginx -->|/api| Backend[Spring Boot]
+    Browser[浏览器] -->|HTTPS + Basic Auth| Caddy[Caddy + React SPA]
+    Caddy -->|/api| Backend[Spring Boot]
     Backend --> PostgreSQL[(PostgreSQL + pgvector)]
     Backend --> Redis[(Redis)]
     Backend --> Storage[(本地文件存储)]
     Backend --> Providers[AI Providers]
 ```
 
-开发环境中由 Vite 将 `/api` 请求代理到本地后端；容器环境中由 Nginx 完成相同的反向代理。
+开发环境中由 Vite 将 `/api` 请求代理到本地后端；容器环境中由 Caddy 提供静态页面、自动 HTTPS、Basic Auth 和相同的反向代理。
 
 ## 本地开发
 
